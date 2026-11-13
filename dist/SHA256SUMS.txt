@@ -1,0 +1,2 @@
+fa6dea48c31333b75a8c5655abaf6f19b0b357150214871af4200afabe880dd2  P4-CAN-Universal-v3.29.3-zh.fullflash.bin
+07847bc881007af283b7ba2ca877dd86d61559fede270257ab586582a41a1f58  P4-CAN-Universal-v3.29.3-zh.OTA.bin
