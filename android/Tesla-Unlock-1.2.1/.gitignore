@@ -1,0 +1,6 @@
+.toolchain/
+build/
+artifacts/
+private/
+local.properties
+.DS_Store

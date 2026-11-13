@@ -1456,9 +1456,9 @@ static String bootCaptureToCsv() {
   } else dTorque = "not_seen";
   bootCaptureAppendEvent(out, "FIRST_0x370_ABS_TORQUE_GE_0.10NM", first370Torque, dTorque);
 
-  bootCaptureAppendEvent(out, "FIRST_PARTY_0x399", first399, "DAS/AP state");
-  bootCaptureAppendEvent(out, "FIRST_PARTY_0x24A_DLC8", first24A, "DAS visual debug / Auto Blinker source");
-  bootCaptureAppendEvent(out, "FIRST_VH_0x249_DLC4", first249, "SCCM stalk status");
+  bootCaptureAppendEvent(out, "FIRST_PARTY_0x399", first399, "DAS/AP 状态");
+  bootCaptureAppendEvent(out, "FIRST_PARTY_0x24A_DLC8", first24A, "DAS 视觉调试 / 自动转向灯来源");
+  bootCaptureAppendEvent(out, "FIRST_VH_0x249_DLC4", first249, "SCCM 拨杆状态");
 
   for (uint8_t i = 0; i < hardCount && i < BOOT_CAPTURE_HARD_MAX; i++) {
     String startName = "HARD_REINIT_" + String((unsigned)(i + 1)) + "_START";
@@ -1628,15 +1628,15 @@ static bool wifiApTextHasControl(const String &v) {
 
 static bool wifiApConfigValid(const String &ssid, const String &password, String *error = nullptr) {
   if (ssid.length() < 1 || ssid.length() > 32) {
-    if (error) *error = "SSID must be 1-32 bytes";
+    if (error) *error = "SSID 必须为 1–32 字节";
     return false;
   }
   if (password.length() < 8 || password.length() > 63) {
-    if (error) *error = "password must be 8-63 bytes";
+    if (error) *error = "密码必须为 8–63 字节";
     return false;
   }
   if (wifiApTextHasControl(ssid) || wifiApTextHasControl(password)) {
-    if (error) *error = "SSID/password contain control characters";
+    if (error) *error = "SSID/密码包含控制字符";
     return false;
   }
   return true;
@@ -1689,7 +1689,7 @@ static bool wifiApActivate(const String &requestedSsid, const String &requestedP
   String fallbackSsid;
   wifiApBuildDefaultSsid(fallbackSsid);
   const String fallbackPassword = "12345678";
-  P4CAN_SERIAL_PRINTLN("WiFi: custom AP failed; restoring fail-safe default AP");
+  P4CAN_SERIAL_PRINTLN("WiFi：自定义热点失败，正在恢复默认安全热点");
   if (!wifiApStartOnce(fallbackSsid, fallbackPassword)) return false;
   // A transient connection failure must not overwrite saved credentials.
   return true;
@@ -1698,7 +1698,7 @@ static bool wifiApActivate(const String &requestedSsid, const String &requestedP
 // Called from setup before the web/BLE/USB writer tasks are launched. These
 // boot messages therefore cannot interleave with the USB CAN capture protocol.
 static void wifiApBootStart() {
-  Serial.println("[P4-CAN WiFi] Starting ESP-Hosted C6...");
+  Serial.println("[P4-CAN WiFi] 正在启动 ESP-Hosted C6…");
   bool ready = p4NetworkBeginWifi();
   if (ready) {
     Serial.printf("[P4-CAN WiFi] Hosted host %lu.%lu.%lu / C6 %lu.%lu.%lu\n",
@@ -2136,7 +2136,7 @@ static void httpOtaUpload() {
         P4CAN_SERIAL_PRINTF("[OTA] Start: %s\n", up.filename.c_str());
 
         if (!prepareCanForMaintenance()) {
-            otaRecordFailure("maintenance", "CAN stop not confirmed; OTA refused. Reboot required.", 0);
+            otaRecordFailure("maintenance", "未能确认 CAN 已停止，已拒绝 OTA。需要重启。", 0);
             return;
         }
         if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
@@ -2174,7 +2174,7 @@ static void httpOtaUpload() {
         const uint8_t priorError = Update.getError();
         Update.abort();
         if (!otaError) {
-            otaRecordFailure("abort", "Upload interrupted (connection closed or receive timeout)",
+            otaRecordFailure("abort", "上传中断（连接关闭或接收超时）",
                              priorError ? priorError : Update.getError());
         }
         otaInProgress = false;
@@ -2431,11 +2431,11 @@ static String researchCaptureStatsToJson() {
   jw.u32("psramFreeBytes", (uint32_t)(psramFreeBytes));
   jw.string("snapshotPlan", rawMode
       ? (mode == RESEARCH_CAPTURE_MODE_ULC_CONFIRM
-          ? "ULC CONFIRM targeted RX · PRE 3s + trigger + POST 7s · 6 IDs · BODY + CHASSIS + PARTY"
+          ? "ULC 确认：定向接收 · 前置 3 秒 + 触发 + 后置 7 秒 · 6 个 ID · 车身 + 底盘 + 智驾"
           : mode == RESEARCH_CAPTURE_MODE_RAW_AUTO_ALC
-            ? "RAW AUTO LEFT OPEN 6/8 ↔ BLOCKED other state · PRE 2s + POST 2s · manual C/D PRE 5s + POST 2s"
-            : "RAW RX ring PRE 5s + trigger + POST 2s · auto re-arm")
-      : "rolling snapshot PRE + trigger + selected POST");
+            ? "RAW 自动：左开 6/8 ↔ 其他状态阻塞 · 前置 2 秒 + 后置 2 秒 · 手动 C/D 前置 5 秒 + 后置 2 秒"
+            : "RAW 接收环形：前置 5 秒 + 触发 + 后置 2 秒 · 自动续录")
+      : "滚动快照：前置 + 触发 + 所选后置");
   jw.boolean("alcValid", alcValid);
   jw.u32("alcRaw", (uint32_t)(alcRaw));
   jw.string("alcName", alcValid ? alcStateName(alcRaw) : "NO DATA");
@@ -3035,7 +3035,7 @@ static String continuousApControlJson(){
   jw.boolean("effectiveEnabled",cfg.enabled&&route!=ContApRoute::None);
   jw.boolean("supported",stalk||single||doubleClick);
   jw.boolean("stalkSupported",stalk);jw.boolean("scrollSingleSupported",single);jw.boolean("scrollDoubleSupported",doubleClick);
-  jw.string("supportReason",stalk||single||doubleClick?"Select a supported method that matches your vehicle's Autopilot setting.":"Unavailable for this vehicle connection. Body + Chassis is required for Continuous AP.");
+  jw.string("supportReason",stalk||single||doubleClick?"请选择与车辆辅助驾驶设置匹配的受支持方式。":"当前车辆连接方式不可用。连续 AP 需要「车身 + 底盘」。");
   jw.string("route",route==ContApRoute::BodyA?"Body CAN A":route==ContApRoute::ChassisB?"Chassis CAN B":"Unavailable");
   jw.string("state",continuousApStateName(status.state));jw.string("blockedReason",continuousApReasonName(status.reason));
   jw.string("lastCancelReason",status.lastCancelReason==ContApReason::None?"None":continuousApReasonName(status.lastCancelReason));
@@ -3363,7 +3363,7 @@ static bool resetNvsKeepBleClearApplicationNamespaces() {
   static_assert(
       sizeof(clearNamespaces) / sizeof(clearNamespaces[0]) ==
           NVS_KEEP_BLE_APPLICATION_NAMESPACE_COUNT_PURE,
-      "keep-BLE reset allowlist count must match the failure model");
+      "保留 BLE 的重置白名单数量必须与故障模型一致");
   bool ok = true;
   for (const char *ns : clearNamespaces) {
     Preferences p;
@@ -3858,12 +3858,12 @@ static void httpSummonTlsscDisable() {
 static void httpSummonTlsscHighwayGate() {
   SummonCfgSnapshot next = summonCfgRuntimeSnapshot();
     if (!server.hasArg("enabled")) {
-      server.send(400, "text/plain", "missing enabled");
+      server.send(400, "text/plain", "缺少 enabled 参数");
       return;
     }
     const String arg = server.arg("enabled");
     if (arg != "0" && arg != "1") {
-      server.send(400, "text/plain", "invalid enabled");
+      server.send(400, "text/plain", "enabled 参数无效");
       return;
     }
     const bool enabled = (arg == "1");
@@ -5613,7 +5613,7 @@ static void httpResetRuntimeStats() {
 }
 
 static void webTask(void *arg) {
-  P4CAN_SERIAL_PRINTLN("WiFi: Starting AP...");
+  P4CAN_SERIAL_PRINTLN("WiFi：正在启动热点…");
   while (!p4NetworkAllowsBle()) {
     if (p4NetworkBeginWifi()) {
       String ssid, password;
