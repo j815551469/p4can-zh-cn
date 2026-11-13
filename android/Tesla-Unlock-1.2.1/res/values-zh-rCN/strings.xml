@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 私有自用中文资源：放入 Tesla-Unlock-1.2.1/res/values-zh-rCN/strings.xml -->
+<resources>
+    <string name="app_name">特斯拉解锁</string>
+    <string name="header_title">特斯拉解锁</string>
+    <string name="status_disconnected">未连接</string>
+    <string name="status_connecting">连接中…</string>
+    <string name="connection_label">T2CAN 连接</string>
+    <string name="connection_initial">请连接 T2CAN 的 Wi-Fi。\n控制台会自动打开。</string>
+    <string name="connection_failed">无法连接 T2CAN。\n请检查设备供电与 Wi-Fi。</string>
+    <string name="connection_loading">已连接 T2CAN。\n正在打开控制台…</string>
+    <string name="open_wifi_settings">打开 Wi-Fi 设置</string>
+    <string name="retry_connection">重试连接</string>
+    <string name="endpoint_version">192.168.4.1 · App 1.2.1</string>
+    <string name="file_picker_unavailable">无法打开系统文件选择器。</string>
+    <string name="use_dashboard_download">请用控制台的日志下载按钮保存该文件。</string>
+    <string name="connect_t2can_wifi">请在 Wi-Fi 设置中连接 T2CAN 网络。</string>
+    <string name="file_transfer_busy">请等待文件传输完成后再返回。</string>
+    <string name="modal_open">请使用打开对话框中的按钮。</string>
+    <string name="dialog_ok">确定</string>
+    <string name="dialog_cancel">取消</string>
+</resources>
