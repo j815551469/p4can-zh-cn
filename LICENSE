@@ -1,0 +1,60 @@
+P4CAN 中文分叉 · 研究与个人使用许可 v1.0
+（非 OSI 认可的开源许可；源码公开不等于放弃权利）
+
+版权所有 (c) 2026 j815551469 及本仓库贡献者。保留所有权利。
+
+本仓库是对上游 P4CAN（https://github.com/06066060606060/P4can-universal-unlock）
+的非官方中文分叉，包含中文化、P4/C5 适配与相关文档。上游同样未声明开源许可。
+
+1. 授权范围
+   在遵守本许可全部条款的前提下，你可以：阅读、复制、修改本仓库内容，并在你自己的
+   车辆上、于封闭私有场地内进行个人研究与学习。
+
+2. 明确禁止
+   2.1 禁止在任何公共道路、公共交通区域或向公众开放的场地使用本仓库的固件、方法与
+       文档，包括但不限于载客、营运、试驾、演示。
+   2.2 禁止商业使用：不得销售、出租、以收费方式提供，或作为收费服务、产品的组成部分。
+   2.3 禁止再分发：不得将本仓库或其修改版公开分发、上传至其他平台，或将编译产物
+       提供给第三方。
+   2.4 禁止移除或隐藏本许可、DISCLAIMER.md、版权声明与来源署名。
+   2.5 禁止用于规避车辆安全系统、营运车辆监管、保险核验，或任何违法犯罪目的。
+
+3. 无担保
+   本仓库内容按“现状”提供，不附带任何明示或默示的担保，包括但不限于适销性、特定
+   用途适用性、不侵权，以及不损坏车辆、不导致人身伤害、不被厂商封禁的担保。作者
+   未对任何报文、参数或接线做过独立安全认证。
+
+4. 责任限制与赔偿
+   在适用法律允许的最大范围内，作者与贡献者不对因使用或无法使用本仓库内容而产生的
+   任何直接、间接、附带、特殊、惩罚性或后果性损害承担责任，包括车辆损坏、数据丢失、
+   人身伤害、罚款、账号封禁、保险拒赔与第三方索赔。
+   你同意就因你违反本许可或违法使用而引发的任何索赔、诉讼、处罚，对作者与贡献者进行
+   赔偿并使其免受损害。
+
+5. 终止
+   你违反本许可任一条款时，授权自动终止，且无补救期。终止后你须立即停止使用并删除
+   全部副本。第 3、4、6 条在终止后继续有效。
+
+6. 其他
+   6.1 本许可不授予任何商标、商号或品牌使用权；“Tesla”等名称归其权利人所有。
+   6.2 本许可不改变任何强制性法律规定；若某条款在你的司法辖区无效，其余条款继续有效。
+   6.3 本许可的适用与解释，以你所在司法辖区的强制性法律为限；作者不通过本许可主张
+       任何豁免法定责任的权利。
+   6.4 权利人如认为本仓库内容侵犯其权利，请通过仓库 Issue 联系，作者将在核实后立即
+       下架相关内容。
+
+---
+
+P4CAN Chinese fork — Research and Personal Use License v1.0
+(NOT an OSI-approved open-source license. Source-visible does not mean rights waived.)
+
+Copyright (c) 2026 j815551469 and contributors. All rights reserved.
+
+Unofficial Chinese fork of P4CAN. Permitted: read, copy, modify, and use for personal
+research and study on your own vehicle in a closed private area only. Prohibited:
+any use on public roads or public areas; commercial use; redistribution; removing this
+license, the disclaimer, or attribution; use to defeat vehicle safety systems or for
+any unlawful purpose. Provided "AS IS" without warranty of any kind. To the maximum
+extent permitted by law the authors accept no liability and you agree to indemnify
+them for claims arising from your use. Rights terminate automatically on violation.
+Rights holders may request removal via a repository issue; content will be removed.
