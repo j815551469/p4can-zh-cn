@@ -1,7 +1,7 @@
 # 构建记录 · P4-CAN-Universal v3.29.3 (zh-CN)
 
 构建时间：2026-11-13 16:08（本地）
-构建来源：**本仓库 HEAD**（`p4can-zh-fork` · 分支 `i18n/zh-cn` · 基线 `50b82a2` + 构建文档提交）
+构建来源：**本仓库源码**（`p4can-zh-fork` · 分支 `i18n/zh-cn` · 固件源码与提交 `82f1d71` 一致）
 构建命令：`python tools/build_firmware.py`（见下，不要用别的目录编）
 构建环境：Windows · arduino-cli 1.6.0 · ESP32 core **3.3.12**
 数据目录：`C:\arduino-data2`（离线索引，工具链来自官方归档）
