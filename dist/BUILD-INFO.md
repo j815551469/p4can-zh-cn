@@ -159,17 +159,19 @@ C5 目标重编：
 然后 `python tools/build_firmware.py` 重编（两项内容级校验都 PASS），
 `P4-CAN-Universal-v3.29.3-zh-C5.OTA.bin` 刷到 **0x10000**。
 
-### 串口验证（COM3 @115200，含对照实验）
+### 验证（串口 + 实机联网，含对照实验）
 
-| 烧录的镜像 | 串口输出 |
+| 烧录的镜像 | 现象 |
 |---|---|
 | 旧 C6 目标 `-zh.OTA.bin`（对照） | 5.2 s 后 `Identified slave [esp32c5] != Expected [esp32c6]` + `assert failed` + 复位重启，20 s 内可看到两轮启动 |
-| 新 C5 目标 `-zh-C5.OTA.bin` | 25 s 抓包 **0 字节**；随后 90 s 监视：端口未掉线、0 次读错误、0 次重连 → **无 abort、无重启** |
+| 新 C5 目标 `-zh-C5.OTA.bin`（串口） | 25 s 抓包 **0 字节**；随后 90 s 监视：端口未掉线、0 次读错误、0 次重连 → **无 abort、无重启** |
+| 新 C5 目标 `-zh-C5.OTA.bin`（实机） | **终端成功连上本固件开出的 Wi-Fi 热点**（2026-11-16 12:04，用户确认）→ C5 射频 / SDIO / hosted RPC / lwIP / softAP 整条链路打通 |
 
-> 为什么「没有输出」就是通过：该固件把 `CONFIG_LOG_DEFAULT_LEVEL` 设为 `ERROR`，
+> 为什么串口「没有输出」就是通过：该固件把 `CONFIG_LOG_DEFAULT_LEVEL` 设为 `ERROR`，
 > 且 `P4CAN_SERIAL_DIAGNOSTICS` 固定为 0（USB CDC 端口被 CAN 日志二进制协议占用，
 > `.ino` 里有 `#error` 强制约束），所以正常启动**本来就不打印**；一旦 abort，
 > panic 走 `ESP_LOGE` 必然会出现在同一个口上——对照组已经证实这条通路有效。
+> 实机连上热点则补上了串口看不到的正面证据：协处理器确实在替 P4 提供 Wi-Fi。
 
 ### 回滚
 
