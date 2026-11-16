@@ -2,6 +2,7 @@
 """为 ESP32 3.3.12 生成完全离线的索引：按工具名手工映射到已下载的归档。"""
 import hashlib
 import json
+import os
 import urllib.parse
 from pathlib import Path
 
@@ -9,8 +10,9 @@ MIRROR = Path(r"C:\esp-mirror")
 BASE = "http://127.0.0.1:8123/"
 
 # 原始索引：优先用 Arduino15 里残留的副本，否则用本地镜像里的旧副本
+local_appdata = Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local"))
 candidates = [
-    Path(r"C:\Users\Administrator\AppData\Local\Arduino15\package_esp32_index.json"),
+    local_appdata / "Arduino15" / "package_esp32_index.json",
     Path(r"C:\arduino-data\package_esp32_index.json"),
     MIRROR / "index_local.json",
 ]
