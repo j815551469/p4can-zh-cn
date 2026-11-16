@@ -1,2 +1,6 @@
-﻿# 本地备份
+# 本地备份
 *.zh.bak
+
+# 本地构建目录（tools/build_firmware.py 的工作目录：暂存源码 + 编译缓存 + 产物）
+build/
+__pycache__/

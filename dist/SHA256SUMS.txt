@@ -1,2 +1,4 @@
-fa6dea48c31333b75a8c5655abaf6f19b0b357150214871af4200afabe880dd2  P4-CAN-Universal-v3.29.3-zh.fullflash.bin
-07847bc881007af283b7ba2ca877dd86d61559fede270257ab586582a41a1f58  P4-CAN-Universal-v3.29.3-zh.OTA.bin
+2ddfe03baec1993f49edc31b6513790b05b75bcee6722a8c36829c6703d98bc3  BUILD-INFO.md
+00c3f97de038dfbb9f1d4b6b49e1f4c86fb3442e6628dbc41d5b3b08f1a19a51  P4-CAN-Universal-v3.29.3-zh.fullflash.bin
+4dc79b0a6837c26fe20390366cd084524d76557fffd0417d9f9683799ee078b3  P4-CAN-Universal-v3.29.3-zh.OTA.bin
+700a26e1bb3a4c73a5ca69d57cdaea442f1c9a5498c8288bbe7d4229dd8bc3e6  Tesla-Unlock-1.2.1-zh.apk
