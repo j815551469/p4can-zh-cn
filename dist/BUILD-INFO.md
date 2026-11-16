@@ -1,5 +1,11 @@
 # 构建记录 · P4-CAN-Universal v3.29.3 (zh-CN)
 
+> **本仓库不随附二进制产物。**
+> 下表中的 `.bin` / `.apk` 仅作为历史构建记录（尺寸与 SHA256），用于比对你自己的编译结果；
+> 仓库不再提供可刷写文件。请用 `python tools/build_firmware.py` 自行编译。
+> 同一份源码不保证逐字节相同（`__DATE__` / `__TIME__` 会进镜像），需要内容级校验时用
+> `tools/verify_build.py`。
+
 构建时间：2026-11-13 16:08（本地）
 构建来源：**本仓库源码**（`p4can-zh-fork` · 分支 `i18n/zh-cn` · 固件源码与提交 `82f1d71` 一致）
 构建命令：`python tools/build_firmware.py`（见下，不要用别的目录编）

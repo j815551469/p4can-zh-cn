@@ -129,18 +129,34 @@ VCC 只接 3.3 V。改完三条硬指标都过才允许上电。
 
 ## 5 · 刷机（Windows）
 
+固件需要自己编译，**本仓库不随附 `.bin` 成品镜像**（合规考虑，详见本节末尾）。
+
 ```powershell
+# 1) 编译（产出 build/out/*.ino.bin 与 *.ino.merged.bin）
+$env:ARDUINO_DIRECTORIES_DATA='C:\arduino-data2'
+python tools/build_firmware.py
+
+# 2) 刷写
 python --version                     # 3.11+
 pip install --upgrade esptool
 esptool.py --chip esp32p4 -p COM5 flash_id    # 必须显示 32MB
 esptool.py --chip esp32p4 -p COM5 -b 460800 write_flash `
-  --flash_mode qio --flash_size 32MB 0x0 P4-CAN-Universal-v3.29.3-zh.fullflash.bin
+  --flash_mode qio --flash_size 32MB 0x0 build\out\P4-CAN-Universal-v3.29.3.ino.merged.bin
 ```
 
 - 地址必须是 **0x0**；`--chip` 必须是 `esp32p4`。
 - 刷完 30–90 秒内应出现热点 `T2CAN-****`，连上后打开 <http://192.168.4.1>。
-- 本仓库 `dist/` 里的中文镜像：`P4-CAN-Universal-v3.29.3-zh-C5.OTA.bin` 是 **P4+C5 板专用**
-  （刷 `0x10000`），`-zh.fullflash.bin` 为 C6 目标的整片镜像。详见 [dist/BUILD-INFO.md](dist/BUILD-INFO.md)。
+- **P4+C5 板**（C5-MINI-1U）必须先按
+  [i18n/交接-下一步C5适配.md](i18n/交接-下一步C5适配.md) 重编 ESP-Hosted 库，否则启动会
+  `Identified slave [esp32c5] != Expected [esp32c6]` 并 abort；C6 板无需此步骤。
+- 历史构建记录（尺寸与 SHA256）见 [dist/BUILD-INFO.md](dist/BUILD-INFO.md)，可用于比对你
+  自己的编译结果；同一份源码不保证逐字节相同（`__DATE__`/`__TIME__` 会进镜像）。
+
+### 为什么仓库里没有成品固件
+
+开箱即刷的镜像会让“拿到就能上车”变得没有门槛，而被改写的正是转向、驾驶员监控这类安全
+相关功能。本仓库因此只提供源码与构建脚本：想用的人至少要自己搭一遍工具链、读一遍手册，
+这一步本身就是必要的门槛。
 
 ## 6 · 首次开机与 Profile
 
@@ -191,10 +207,10 @@ Dashboard 页面：`HOME`（RX 计数是否在涨、TX Fail 是否为 0）、`DE
 | 项 | 位置 | 说明 |
 |---|---|---|
 | 中文仪表板 | `dashboard_source.html` / `index_html.h` | 865 条词表，逐字节校验编译进固件 |
-| 中文固件 | [`dist/`](dist/) | C6 目标整片镜像 + C5 目标 OTA 镜像 |
-| 中文 APK | `dist/Tesla-Unlock-1.2.1-zh.apk` | 界面中文化，自签名 |
+| 中文 APK 源码 | [`android/`](android/) | 界面中文化；APK 需自行构建 |
 | P4 + C5 适配 | [`i18n/交接-下一步C5适配.md`](i18n/交接-下一步C5适配.md) | 重编 ESP-Hosted 为 C5 目标，修复启动 abort |
 | 构建方式 | [`tools/build_firmware.py`](tools/build_firmware.py) | 仓库直编，内含中文仪表板与 TinyCrypt 契约校验 |
+| 构建记录 | [`dist/BUILD-INFO.md`](dist/BUILD-INFO.md) | 历史产物的尺寸与 SHA256，供比对；**不含二进制** |
 
 构建：
 
