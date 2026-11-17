@@ -245,3 +245,6 @@ python -m esptool --chip esp32p4 -p COM3 -b 921600 write-flash `
 
 > 仪表板的英文基线在 `..\manual\i18n-audit\p4_dashboard.html`（仓库外）；
 > 重生成 + 校验命令见 `i18n/构建与联调.md`。此次**未刷机**，只做到编译与内容级校验。
+>
+> **可复现性**：2026-11-17 13:12 再编一次，`.ino.bin` 与 `.merged.bin` 的 SHA256
+> 与上表完全一致（ELF 因调试段不同而略有差异），说明同一份源码编出的应用镜像稳定。
