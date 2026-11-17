@@ -246,5 +246,8 @@ python -m esptool --chip esp32p4 -p COM3 -b 921600 write-flash `
 > 仪表板的英文基线在 `..\manual\i18n-audit\p4_dashboard.html`（仓库外）；
 > 重生成 + 校验命令见 `i18n/构建与联调.md`。此次**未刷机**，只做到编译与内容级校验。
 >
-> **可复现性**：2026-11-17 13:12 再编一次，`.ino.bin` 与 `.merged.bin` 的 SHA256
-> 与上表完全一致（ELF 因调试段不同而略有差异），说明同一份源码编出的应用镜像稳定。
+> **本轮构建方式**：2026-11-17 13:12 的这次是**增量构建**（`build/build` 里上一次的对象文件仍在，
+> 且 `dashboard_source.html` 未变，arduino-cli 判定无需重编），所以 `.ino.bin` / `.merged.bin`
+> 的 SHA256 与上表完全一致、逐字节相同。若清空 `build/` 全新编译，ESP32 core 里的
+> `__DATE__` / `__TIME__` 会变化，整包哈希随之改变 —— 判断固件是否同源请用
+> `tools/verify_build.py` 的内容级校验，不要只看哈希。
