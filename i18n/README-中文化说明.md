@@ -1,88 +1,104 @@
-﻿# 中文分支（私有自用）说明
+# 中文分支（私有自用）说明
 
 > 仅用于本车私有研究，不对外分发。原项目无 LICENSE（默认保留所有权利），
 > 因此本目录只保存在本地私有仓库，**不要公开、不要上传 Release**。
 
-## 1. 目录
+## 1. 文件
 
+| 文件 | 作用 |
+|---|---|
+| `tools/localize.py` | 中文注入工具：文本节点 + aria/placeholder/title 属性 + JS 字面量（含 `` `${…}` `` 模板串） |
+| `i18n/zh-CN.json` | **静态文案词表**（文本节点、属性、静态 JS 串），key = 英文原文 |
+| `i18n/dashboard-js-zh.json` | **动态文案词表**（JS 运行时拼的提示/状态/确认框），模板串用 `{e0}`/`{e1}` 占位 |
+| `tools/verify_localization.py` | 校验器：结构一致、无逻辑串被翻译、词表全部生效、`lang=zh-CN` |
+| `dashboard_source.html` | 生成物（中英文对照唯一来源是 `manual/i18n-audit/p4_dashboard.html`） |
+
+> 仓库外的英文源文件在 `D:\harness works\p4can\manual\i18n-audit\p4_dashboard.html`。
+> **不要手改 `dashboard_source.html`**——下次重新生成会被覆盖。
+
+## 2. 重新生成
+
+```powershell
+cd 'D:\harness works\p4can\repo'
+python tools\localize.py `
+  --src ..\manual\i18n-audit\p4_dashboard.html `
+  --dict i18n\zh-CN.json `
+  --js-dict i18n\dashboard-js-zh.json `
+  --out dashboard_source.html `
+  --report ..\manual\i18n\untranslated.csv
+
+# 必须过校验（结构/逻辑串/词表生效/语言标记）
+python tools\verify_localization.py `
+  --src ..\manual\i18n-audit\p4_dashboard.html `
+  --out dashboard_source.html `
+  --dict i18n\zh-CN.json --js-dict i18n\dashboard-js-zh.json
+
+# 再重建内嵌 gzip 头
+python tools\build_dashboard.py
 ```
-tools/localize.py              中文注入工具（文本节点 + aria-label/placeholder/title + JS 整串）
-i18n/zh-CN.json                词表（key = 英文原文，value = 中文），共 788 条
-i18n/zh-CN.batch2/3/4.json     分批翻译的历史批次（可留档）
-i18n/dashboard_source.zh.html  生成的中文版仪表板（不要手改）
-i18n/untranslated.csv          自动扫描到的未命中项（多为 JS 代码片段）
-i18n/js_strings_left.txt       JS 内剩余待译候选（489 条，需人工甄别）
-i18n/preview_zh_dashboard.png  中文版渲染预览
-i18n-audit/p4_dashboard.html   上游原始源文件（同步上游后替换）
-i18n-audit/dashboard_strings_zh.csv  788 条文案全表（中文列已 100% 填满）
-```
 
-## 2. 用法
+`--js-dict` 可省略（没有它时只翻静态文案）。生成是确定性的：同一份英文源 +
+两份词表，产物逐字节一致，可放心重复执行。
 
-```bash
-# 1) 同步上游源文件 -> i18n-audit/p4_dashboard.html
-# 2) 生成中文版
-python tools/localize.py \
-  --src i18n-audit/p4_dashboard.html \
-  --dict i18n/zh-CN.json \
-  --out i18n/dashboard_source.zh.html \
-  --report i18n/untranslated.csv
-# 3) 浏览器打开生成的 html 预览
-```
+## 3. 硬规则：只翻“文案”，绝不翻“数据”
 
-## 3. 进度（2026-11-13）
+工具会先扫一遍英文源，把出现在下列位置的字符串记为**受保护**，任何地方都不翻译：
+
+- 比较/匹配上下文：`===` `!==` `==` `!=`、`case`、`.includes(` `.indexOf(` `.startsWith(` 等
+- 数据赋值：`dataset.x=`、`.value=`、`.id=`、`.key=`、`.name=`
+- 成员访问：`obj['KEY']`
+- 键名/页面 id（`panelDevice`、`settings-lite` 等）
+
+这条规则来自一次真实事故：早期版本把 `state==='READY'` 里的 `READY` 翻成「就绪」、
+把 `__p4CanBName==='CHASSIS'` 翻成「底盘」、把 `event.key==='Home'` 翻成「首页」，
+导致状态判断、R79 路由、下拉键盘导航全部失效。现在这类字面量一律保留英文
+（状态值本来就是固件返回的枚举，界面上显示 READY/ACTIVE 等与数据一致）。
+
+`verify_localization.py` 会再查一遍“中文是否出现在比较里”，命中即失败。
+
+## 4. 术语（统一）
+
+| 英文 | 中文 | 备注 |
+|---|---|---|
+| Profile | 车型档案 | |
+| Vehicle functions | 车辆功能 | |
+| Nag / NAG | 握持提示 / 脱手提醒 | 方向盘扭力提醒 |
+| Nag Killer | 握持提示抑制 | |
+| Summon | 智能召唤 / 召唤 | |
+| TLSSC | 红绿灯与停车标志控制 | 快捷块因宽度只写「红绿灯控制」 |
+| DMS / Driver Monitoring | 驾驶员监控 | |
+| ISA | ISA 限速提醒 | 智能限速辅助 |
+| ALC | 自动变道（ALC） | 标志位名保留 ALC |
+| ULC | 免确认变道（ULC） | `UI_ulcStalkConfirm` |
+| HO | 握持（Hands-On） | |
+| Injection | 注入 | |
+| Dashboard | 控制台 | |
+| CAN capture | CAN 抓包 | |
+| STOCK | 原车 | |
+| OFF / ON | 关闭 / 开启 | |
+| TX / RX | 发送 / 接收 | |
+| BODY / CHASSIS / PARTY | 车身 / 底盘 / 智驾 | 总线角色 |
+| epoch | 世代 | |
+
+## 5. 不要翻译
+
+JSON 字段名、API 路径（`/api/...`）、枚举值（`READY`/`CHASSIS`/`SNAPSHOT` 等）、
+CAN 信号名与报文 ID、日志字段、代码注释、下载文件名（`*.csv`）。
+
+## 6. 现状（2026-11-17 复核）
 
 | 范围 | 状态 |
 |---|---|
-| 仪表板静态文案（788 条） | ✅ **100% 已翻译** |
-| HTML 属性（aria-label / placeholder / title） | ✅ 已覆盖 |
-| JS 整串（与词表完全一致的） | ✅ 已覆盖 |
-| JS 动态提示（档案状态/连接/AP 状态等） | ✅ 已补 30+ 条 |
-| JS 拼接片段（`js_strings_left.txt`，489 候选） | ⏳ 约 100 条是真 UI 文案，待人工甄别 |
-| 固件 API 消息（`web_api.h` 等，28 条） | ✅ **28/28 已翻译**（`firmware_zh.json`） |
-| Android 资源（18 条） | ✅ **18/18**（`android/strings.xml`） |
-| Android 硬编码（约 60 处 Java 字符串） | ⏳ 待抽资源 |
-| 固件接入（embed / build 脚本切换） | ⏳ 待改构建链 |
-| 真机 + 编译验证 | ⏳ 需要 Arduino-ESP32 / Android SDK 环境 |
+| 仪表板静态文案 | ✅ 889 条词表，全部生效 |
+| 仪表板 JS 动态文案 | ✅ 232 条（含 6 段配对向导 HTML 模板） |
+| aria-label / placeholder | ✅ 已补 24 条 |
+| 固件 API 消息（`web_api.h`） | ✅ 20 条，2026-11-17 修了「左开」「WiFi/C6」等 |
+| Android 资源 | ✅ 18 条（`android/strings.xml`） |
+| 真机 / 三档宽度截图 | ⏳ 需硬件（本机无 Playwright） |
 
-## 4. 术语表（必须统一）
+## 7. 上游更新后怎么同步
 
-| 英文 | 中文 |
-|---|---|
-| Profile | 车型档案 |
-| Vehicle functions | 车辆功能 |
-| Nag Killer | 握持提示抑制 |
-| Advanced EAP | 增强版 EAP |
-| Summon | 智能召唤 |
-| TLSSC | 红绿灯与停车标志控制 |
-| DMS | 驾驶员监控 |
-| Injection | 注入 |
-| Dashboard | 控制台 |
-| CAN capture | CAN 抓包 |
-| STOCK | 原车 |
-| OFF | 关闭 |
-| TX / RX | 发送 / 接收 |
-| HO | 握持（Hands-On） |
-| ALC | 自动变道 |
-
-## 5. 不要翻译的东西
-
-- JSON 字段名、API 路径（`/api/...`）
-- 枚举值（`BODY`/`PARTY`/`CHASSIS` 作为数据出现时）
-- CAN 信号名、报文 ID（`0x3F8`、`UI_driverAssistControl`）
-- 日志字段名、错误码
-- 代码注释
-
-## 6. 接入固件
-
-上游构建链：`dashboard_source.html` →（`tools/build_dashboard.py`）→（`tools/embed_dashboard.py`）→ `index_html.h`（gzip）。
-
-- **方式 A（改动最小）**：把 `embed_dashboard.py` 的输入换成 `dashboard_source.zh.html`。
-- **方式 B（双语）**：同时嵌入 en/zh 两份，按 NVS `lang` 返回对应一份（flash 约翻倍，P4 32MB 可承受）。
-
-## 7. 后续路线
-
-1. JS 拼接片段人工甄别（`js_strings_left.txt`）→ 补进词表
-2. 固件消息表：`web_api.h` / `serial_diag.h` → `i18n_strings.h`（中英双表 + NVS 开关）
-3. APK：`values-zh-rCN/strings.xml` + 抽硬编码 + 补 Gradle 工程
-4. 真机验证：320/390/430px 三档宽度截图查溢出
+1. 用新上游的 `dashboard_source.html` 覆盖 `manual/i18n-audit/p4_dashboard.html`
+2. 重跑第 2 节两条命令
+3. 看 `untranslated.csv`：新文案会落进来，按批补词表
+4. 若上游改了已有英文原文，旧词条自动失效（key 对不上即不再翻译），不会误伤

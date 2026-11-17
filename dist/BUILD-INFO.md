@@ -219,3 +219,29 @@ python -m esptool --chip esp32p4 -p COM3 -b 921600 write-flash `
 - 原项目无 LICENSE，**仅限私有自用**，请勿公开分发。
 - 这是 **BETA**（上游 v3.29.3 标注），上车前先在台架验证。
 - 上游若更新：按 `i18n/构建与联调.md` 重跑注入 → `python tools/build_firmware.py`。
+
+## 四、汉化第二轮复核后重编（2026-11-17）
+
+改动内容见 `i18n/完工报告.md` 第六节：修复 19 处「翻译改坏 JS 逻辑」、纠正 20+ 条错译、
+补齐 239 条 JS 动态文案与 24 条 aria/placeholder、`<html lang>` 改为 `zh-CN`。
+
+| 项 | 值 |
+|---|---|
+| 程序占用 | 1,392,868 B / 4,718,592 B（29%） |
+| 全局变量 | 77,808 B / 327,680 B（23%） |
+| 应用镜像 | `build/out/P4-CAN-Universal-v3.29.3.ino.bin` · 1,393,584 B · SHA256 `04a559c44cdc0833c51187642e944f1c5658ffee178a58296554f9308fc56b5f` |
+| 整片镜像 | `build/out/P4-CAN-Universal-v3.29.3.ino.merged.bin` · 33,554,432 B · SHA256 `eb157330f652c7705183bcc9e244d2258f26cd97e57c3c6bafb4b15e5f49d500` |
+| 仪表板偏移 | 应用镜像 `0x37080`，整片镜像 `0x47080` |
+| 仪表板内容 | 365,050 B，解压后与 `dashboard_source.html` **逐字节一致**，**9,931 个汉字** |
+| 仪表板 gzip 流 SHA256 | `a0fe5bae29f48c4f1e05067a049e9bc4868992347a2677e22b3ebc9ac589d957`（`verify_build.py` 打印的就是这个，不是镜像本身的哈希） |
+
+校验输出（`tools/verify_build.py` + TinyCrypt 契约）：
+
+```
+[PASS] .../P4-CAN-Universal-v3.29.3.ino.bin: 内嵌中文仪表板校验通过
+[PASS] .../P4-CAN-Universal-v3.29.3.ino.merged.bin: 内嵌中文仪表板校验通过
+[PASS] crypto 契约：TinyCrypt 符号来自 src/p4_tinycrypt（未链入 stock libbt）
+```
+
+> 仪表板的英文基线在 `..\manual\i18n-audit\p4_dashboard.html`（仓库外）；
+> 重生成 + 校验命令见 `i18n/构建与联调.md`。此次**未刷机**，只做到编译与内容级校验。

@@ -1674,7 +1674,7 @@ static bool wifiApStartOnce(const String &ssid, const String &password) {
       wifiApActivePassword = password;
       return true;
     }
-    P4CAN_SERIAL_PRINTF("WiFi: AP start failed for SSID=%s attempt=%u/3\n",
+    P4CAN_SERIAL_PRINTF("Wi-Fi: AP start failed for SSID=%s attempt=%u/3\n",
                   ssid.c_str(), (unsigned)(attempt + 1));
     vTaskDelay(pdMS_TO_TICKS(500));
   }
@@ -1689,7 +1689,7 @@ static bool wifiApActivate(const String &requestedSsid, const String &requestedP
   String fallbackSsid;
   wifiApBuildDefaultSsid(fallbackSsid);
   const String fallbackPassword = "12345678";
-  P4CAN_SERIAL_PRINTLN("WiFi：自定义热点失败，正在恢复默认安全热点");
+  P4CAN_SERIAL_PRINTLN("Wi-Fi：自定义热点失败，正在恢复默认安全热点");
   if (!wifiApStartOnce(fallbackSsid, fallbackPassword)) return false;
   // A transient connection failure must not overwrite saved credentials.
   return true;
@@ -1698,10 +1698,10 @@ static bool wifiApActivate(const String &requestedSsid, const String &requestedP
 // Called from setup before the web/BLE/USB writer tasks are launched. These
 // boot messages therefore cannot interleave with the USB CAN capture protocol.
 static void wifiApBootStart() {
-  Serial.println("[P4-CAN WiFi] 正在启动 ESP-Hosted C6…");
+  Serial.println("[P4-CAN Wi-Fi] 正在启动 ESP-Hosted 从机…");
   bool ready = p4NetworkBeginWifi();
   if (ready) {
-    Serial.printf("[P4-CAN WiFi] Hosted host %lu.%lu.%lu / C6 %lu.%lu.%lu\n",
+    Serial.printf("[P4-CAN Wi-Fi] 宿主 %lu.%lu.%lu / 从机 %lu.%lu.%lu\n",
         (unsigned long)p4NetworkHostVersion[0], (unsigned long)p4NetworkHostVersion[1],
         (unsigned long)p4NetworkHostVersion[2], (unsigned long)p4NetworkSlaveVersion[0],
         (unsigned long)p4NetworkSlaveVersion[1], (unsigned long)p4NetworkSlaveVersion[2]);
@@ -1778,7 +1778,7 @@ static void httpWifiApply() {
   // Only the SoftAP is recycled. CAN, BLE and the MCU remain running.
   delay(450);  // allow the HTTP response to leave before the client is dropped
   const bool ok = wifiApActivate(ssid, password, true);
-  P4CAN_SERIAL_PRINTF("WiFi: AP config apply %s · SSID=%s IP=%s\n",
+  P4CAN_SERIAL_PRINTF("Wi-Fi: AP config apply %s · SSID=%s IP=%s\n",
                 ok ? "OK" : "FAILED", wifiApActiveSsid.c_str(), WiFi.softAPIP().toString().c_str());
 }
 
@@ -2433,7 +2433,7 @@ static String researchCaptureStatsToJson() {
       ? (mode == RESEARCH_CAPTURE_MODE_ULC_CONFIRM
           ? "ULC 确认：定向接收 · 前置 3 秒 + 触发 + 后置 7 秒 · 6 个 ID · 车身 + 底盘 + 智驾"
           : mode == RESEARCH_CAPTURE_MODE_RAW_AUTO_ALC
-            ? "RAW 自动：左开 6/8 ↔ 其他状态阻塞 · 前置 2 秒 + 后置 2 秒 · 手动 C/D 前置 5 秒 + 后置 2 秒"
+            ? "RAW 自动：左变道开放 6/8 ↔ 其他状态阻塞 · 前置 2 秒 + 后置 2 秒 · 手动 C/D 前置 5 秒 + 后置 2 秒"
             : "RAW 接收环形：前置 5 秒 + 触发 + 后置 2 秒 · 自动续录")
       : "滚动快照：前置 + 触发 + 所选后置");
   jw.boolean("alcValid", alcValid);
@@ -3035,7 +3035,7 @@ static String continuousApControlJson(){
   jw.boolean("effectiveEnabled",cfg.enabled&&route!=ContApRoute::None);
   jw.boolean("supported",stalk||single||doubleClick);
   jw.boolean("stalkSupported",stalk);jw.boolean("scrollSingleSupported",single);jw.boolean("scrollDoubleSupported",doubleClick);
-  jw.string("supportReason",stalk||single||doubleClick?"请选择与车辆辅助驾驶设置匹配的受支持方式。":"当前车辆连接方式不可用。连续 AP 需要「车身 + 底盘」。");
+  jw.string("supportReason",stalk||single||doubleClick?"请选择与车辆辅助驾驶设置匹配的受支持方式。":"当前车辆连接方式不可用。连续 AP 需要「车身 + 底盘」拓扑。");
   jw.string("route",route==ContApRoute::BodyA?"Body CAN A":route==ContApRoute::ChassisB?"Chassis CAN B":"Unavailable");
   jw.string("state",continuousApStateName(status.state));jw.string("blockedReason",continuousApReasonName(status.reason));
   jw.string("lastCancelReason",status.lastCancelReason==ContApReason::None?"None":continuousApReasonName(status.lastCancelReason));
@@ -5613,7 +5613,7 @@ static void httpResetRuntimeStats() {
 }
 
 static void webTask(void *arg) {
-  P4CAN_SERIAL_PRINTLN("WiFi：正在启动热点…");
+  P4CAN_SERIAL_PRINTLN("Wi-Fi：正在启动热点…");
   while (!p4NetworkAllowsBle()) {
     if (p4NetworkBeginWifi()) {
       String ssid, password;
