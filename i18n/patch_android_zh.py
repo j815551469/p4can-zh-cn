@@ -4,7 +4,7 @@ import json
 import shutil
 from pathlib import Path
 
-ROOT = Path(r"D:\harness works\p4can-zh-fork")
+ROOT = Path(r"D:\harness works\p4can\repo")
 AND = ROOT / "android" / "Tesla-Unlock-1.2.1"
 
 UI = {

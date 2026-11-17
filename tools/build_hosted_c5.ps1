@@ -31,7 +31,7 @@
     powershell -ExecutionPolicy Bypass -File tools\build_hosted_c5.ps1
 #>
 param(
-    [string]$Source    = 'C:\esp-hosted\esp_hosted',
+    [string]$Source    = 'D:\harness works\p4can\esp-hosted-src\esp_hosted',
     [string]$WorkDir   = 'C:\esp-build-c5lib',
     [string]$Libs      = 'C:\arduino-data2\packages\esp32\tools\esp32p4-libs\3.3.12',
     [string]$SdkConfig = ''

@@ -4,7 +4,7 @@ import csv
 import json
 from pathlib import Path
 
-d = Path(r"D:\harness works\p4can-model-y-2021")
+d = Path(r"D:\harness works\p4can\manual")
 i18n = d / "i18n"
 
 FW = {

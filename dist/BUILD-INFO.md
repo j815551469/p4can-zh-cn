@@ -62,7 +62,7 @@ python tools/verify_build.py --bin dist/P4-CAN-Universal-v3.29.3-zh.OTA.bin \
 ## 与 2026-11-13 14:35 旧产物的差异（重要）
 
 旧 `dist/` 的两份 BIN **不是从本仓库源码编出的**：它编自
-`D:\harness works\P4-CAN-Universal-v3.29.3`——一份不完整的副本，缺少
+`D:\harness works\p4can\upstream-sketch`——一份不完整的副本，缺少
 `src/p4_tinycrypt/`（上游自带的 TinyCrypt 覆写实现）、`fonts/` 与 `tests/`。
 
 后果与本次修正：
