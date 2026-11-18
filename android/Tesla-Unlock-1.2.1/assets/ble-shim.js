@@ -49,6 +49,11 @@
     } catch (e) { }
   }
 
+  // 无法解析的帧：App 会把原始十六进制发过来
+  window.__tuBleRaw = function (hex) {
+    errorBanner('收到无法解析的帧（前 48 字节）：' + hex);
+  };
+
   window.__tuBleResult = function (id, status, body) {
     var settle = pending.get(id);
     if (!settle) return;

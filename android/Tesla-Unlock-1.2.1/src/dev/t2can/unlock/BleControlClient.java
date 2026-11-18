@@ -258,6 +258,15 @@ public final class BleControlClient {
             if (first > 0 && second > first) {
                 try { status = Integer.parseInt(message.substring(first + 1, second).trim()); } catch (NumberFormatException ignored) { }
                 body = message.substring(second + 1);
+            } else {
+                // 无法解析：把原始帧送回页面，便于定位是固件发错还是解析错。
+                StringBuilder hex = new StringBuilder();
+                for (int i = 0; i < data.length && i < 48; i++) {
+                    hex.append(String.format("%02X", data[i]));
+                }
+                final String raw = hex.toString();
+                main.post(() -> listener.onResult(-1, -1, raw));
+                return;
             }
             final int fStatus = status;
             final String fBody = body;

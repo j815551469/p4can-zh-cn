@@ -443,6 +443,9 @@ public final class MainActivity extends Activity {
     private void showConnectionMenu() {
         if(fileCallback!=null) { toast(R.string.file_transfer_busy);return; }
         if(web==null) { panel.show();return; }
+        // 蓝牙模式没有注入 dashboard-bridge.js，__tuNativeBusy 不存在，
+        // 原来的检查会把结果当成 true 而误报“请等待文件传输完成”。
+        if(bleMode) { panel.show();return; }
         final WebView current=web;final int epoch=documentEpoch;
         current.evaluateJavascript("window.__tuNativeBusy ? window.__tuNativeBusy() : true", result->{
             if(destroyed || current!=web || epoch!=documentEpoch) return;
@@ -533,6 +536,11 @@ public final class MainActivity extends Activity {
                 }
                 public void onResult(int id, int status, String body) {
                     if (destroyed || web == null || !bleMode) return;
+                    if (id < 0) {
+                        web.evaluateJavascript("window.__tuBleRaw && window.__tuBleRaw("
+                                + org.json.JSONObject.quote(body == null ? "" : body) + ")", null);
+                        return;
+                    }
                     web.evaluateJavascript("window.__tuBleResult(" + id + "," + status + ","
                             + org.json.JSONObject.quote(body == null ? "" : body) + ")", null);
                 }
