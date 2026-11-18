@@ -1238,6 +1238,9 @@ static bool nagNvsReadError = false;
 static bool nagNvsCorrupt = false;
 // 加载时从 NVS 原样读到的 enabled（策略归一化之前），用于诊断“重启变关”。
 static bool nagStoredEnabled = false;
+// 存档 blob 的实际长度与当前结构体期望长度（诊断“旧格式读不回来”）。
+static size_t nagStoredBlobLen = 0;
+static size_t nagExpectedBlobLen = 0;
 
 static void nagCfgLoadSafeDefaults() {
   nagCfgDefaultsModeH(nagCfg);
@@ -1305,6 +1308,16 @@ static void nagCfgLoad() {
     }
     if (actual != 0 && actual != sizeof(stored)) {
       nagNvsCorrupt = true;
+      nagStoredBlobLen = actual;
+      nagExpectedBlobLen = sizeof(stored);
+      // 旧格式的 blob 必须清掉：否则它一直占着 NVS 空间，写入新格式会失败，
+      // 于是每次启动都回落到默认值（enabled=false），表现就是“开关存不住”。
+      nvs_handle_t h;
+      if (nvs_open("nag", NVS_READWRITE, &h) == ESP_OK) {
+        nvs_erase_key(h, "snapshot");
+        nvs_commit(h);
+        nvs_close(h);
+      }
       nagCfgLoadSafeDefaults();
       return;
     }
@@ -1316,10 +1329,20 @@ static void nagCfgLoad() {
     if (stored.version != 1u || !nagModePersistedIdSupported(stored.config.mode) ||
         !modeHConfigValidPure(stored.human)) {
       nagNvsCorrupt = true;
+      nagStoredBlobLen = sizeof(stored);
+      nagExpectedBlobLen = sizeof(stored);
+      nvs_handle_t h;
+      if (nvs_open("nag", NVS_READWRITE, &h) == ESP_OK) {
+        nvs_erase_key(h, "snapshot");
+        nvs_commit(h);
+        nvs_close(h);
+      }
       nagCfgLoadSafeDefaults();
       return;
     }
     nagStoredEnabled = stored.config.enabled;
+    nagStoredBlobLen = sizeof(stored);
+    nagExpectedBlobLen = sizeof(stored);
     nagScrollRuntimeRestore(stored.scroll);
     nagCfg = stored.config;
     nagCfgClampAll(nagCfg);

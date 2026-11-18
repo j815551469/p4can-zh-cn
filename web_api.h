@@ -125,6 +125,8 @@ static String nagCfgToJson() {
   jw.boolean("nvsReadError", nagNvsReadError);
   jw.boolean("nvsCorrupt", nagNvsCorrupt);
   jw.boolean("storedEnabled", nagStoredEnabled);
+  jw.u32("blobActualLen", (uint32_t)nagStoredBlobLen);
+  jw.u32("blobExpectedLen", (uint32_t)nagExpectedBlobLen);
   jw.finish();
   return s;
 }
