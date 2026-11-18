@@ -272,19 +272,8 @@ public final class BleControlClient {
             gatt.setCharacteristicNotification(rspChar, true);
             BluetoothGattDescriptor descriptor = rspChar.getDescriptor(CCCD);
             if (descriptor == null) { ready = true; state("已就绪", "该设备没有通知描述符，仍可下发命令。"); return; }
-            // 重连时 Android 会忽略“相同值”的描述符写入（不给回调），
-            // 所以先写一次 NOTIFY 让状态发生变化，再写 INDICATION。
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
             gatt.writeDescriptor(descriptor);
-            main.postDelayed(() -> {
-                if (gatt == null || rspChar == null || ready) return;
-                try {
-                    BluetoothGattDescriptor d2 = rspChar.getDescriptor(CCCD);
-                    if (d2 == null) return;
-                    d2.setValue(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
-                    gatt.writeDescriptor(d2);
-                } catch (SecurityException ignored) { }
-            }, 250);
             // 兜底：2 秒内还没等到描述符回调也继续，避免永远卡在“正在订阅”。
             main.postDelayed(() -> {
                 if (ready || destroyed2()) return;

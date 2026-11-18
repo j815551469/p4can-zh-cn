@@ -178,25 +178,11 @@ static void bleCtrlNotifyText(uint16_t id, int status, const String &body) {
     frame[2] = seq++;
     frame[3] = last ? 0x01 : 0x00;
     memcpy(frame + 4, msg.c_str() + off, n);
-    for (uint8_t attempt = 0; attempt < 3; attempt++) {
-      const uint32_t before = bleCtrlIndicateDone;
-      bleCtrlRspChar->setValue(frame, 4 + n);
-      bleCtrlRspChar->notify(false);   // false = indication（需要对端确认）
-      bool confirmed = false;
-      for (uint8_t wait = 0; wait < 25; wait++) {
-        if (bleCtrlIndicateDone != before) { confirmed = true; break; }
-        vTaskDelay(pdMS_TO_TICKS(10));
-      }
-      if (confirmed) break;
-      // 对端可能只订阅了 notification（或重连后 indication 订阅被系统忽略）：
-      // 退化为普通通知再发一次，避免重连后“什么都收不到”。
-      const uint32_t beforeNotify = bleCtrlIndicateDone;
-      bleCtrlRspChar->notify(true);
-      for (uint8_t wait = 0; wait < 8; wait++) {
-        if (bleCtrlIndicateDone != beforeNotify) break;
-        vTaskDelay(pdMS_TO_TICKS(10));
-      }
-    }
+    // 只用 notification：indication 在“重连后 CCCD 状态不一致”时更脆弱。
+    // 20 ms 节奏低于常见连接间隔，配合手机侧重试/缓存足够可靠。
+    bleCtrlRspChar->setValue(frame, 4 + n);
+    bleCtrlRspChar->notify(true);
+    vTaskDelay(pdMS_TO_TICKS(20));
   }
 }
 
