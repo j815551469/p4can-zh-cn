@@ -371,7 +371,7 @@ public final class MainActivity extends Activity {
                 closeExporter();
             }
             @Override public void onPageFinished(WebView view, String url) {
-                if (bleMode && BLE_PAGE.equals(url)) {
+                if (bleMode && url != null && url.startsWith("file://")) {
                     if (view != web || destroyed) return;
                     loaded = true;
                     dashboardLoadedOnce = true;
