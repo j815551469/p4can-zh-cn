@@ -160,7 +160,7 @@ static void bleCtrlNotifyText(uint16_t id, int status, const String &body) {
     memcpy(frame + 4, msg.c_str() + off, n);
     bleCtrlRspChar->setValue(frame, 4 + n);
     bleCtrlRspChar->notify();
-    vTaskDelay(pdMS_TO_TICKS(6));
+    vTaskDelay(pdMS_TO_TICKS(4));
   }
 }
 
@@ -352,7 +352,7 @@ static bool bleCtrlStart() {
   adv->setScanResponse(true);
   BLEDevice::startAdvertising();
 
-  if (!bleCtrlQueue) bleCtrlQueue = xQueueCreate(4, sizeof(BleCtrlCmd));
+  if (!bleCtrlQueue) bleCtrlQueue = xQueueCreate(16, sizeof(BleCtrlCmd));
   if (!bleCtrlQueue) {
     bleCtrlSetError("queue create failed");
     return false;
