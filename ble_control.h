@@ -167,11 +167,19 @@ static void bleCtrlNotifyText(uint16_t id, int status, const String &body) {
       bleCtrlRspChar->setValue(frame, 4 + n);
       bleCtrlRspChar->notify(false);   // false = indication（需要对端确认）
       bool confirmed = false;
-      for (uint8_t wait = 0; wait < 40; wait++) {
+      for (uint8_t wait = 0; wait < 25; wait++) {
         if (bleCtrlIndicateDone != before) { confirmed = true; break; }
         vTaskDelay(pdMS_TO_TICKS(10));
       }
       if (confirmed) break;
+      // 对端可能只订阅了 notification（或重连后 indication 订阅被系统忽略）：
+      // 退化为普通通知再发一次，避免重连后“什么都收不到”。
+      const uint32_t beforeNotify = bleCtrlIndicateDone;
+      bleCtrlRspChar->notify(true);
+      for (uint8_t wait = 0; wait < 8; wait++) {
+        if (bleCtrlIndicateDone != beforeNotify) break;
+        vTaskDelay(pdMS_TO_TICKS(10));
+      }
     }
   }
 }
