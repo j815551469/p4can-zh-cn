@@ -14,7 +14,10 @@ import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
@@ -62,6 +65,8 @@ public final class BleControlClient {
     private int pendingId = -1;
     private final ArrayList<byte[]> writeQueue = new ArrayList<>();
     private boolean writing;
+    private boolean bondReceiverRegistered;
+    private final Runnable bondTimeout = () -> { if (connected && !ready) { subscribe(); } };
 
     public BleControlClient(Context context, Listener listener) {
         this.context = context.getApplicationContext();
@@ -169,28 +174,48 @@ public final class BleControlClient {
             rspChar = service.getCharacteristic(RSP);
             staChar = service.getCharacteristic(STA);
             if (cmdChar == null || rspChar == null) { state("特征缺失", "控制通道特征不完整。"); return; }
+            boolean bonded = false;
             try {
-                g.setCharacteristicNotification(rspChar, true);
-                BluetoothGattDescriptor descriptor = rspChar.getDescriptor(CCCD);
-                if (descriptor != null) {
-                    descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                    g.writeDescriptor(descriptor);
-                }
-                // 固件要求加密链路；主动配对一次，避免首次写入被拒。
-                BluetoothDevice device = g.getDevice();
-                if (Build.VERSION.SDK_INT < 31 || device.getBondState() != BluetoothDevice.BOND_BONDED) {
-                    try { device.createBond(); } catch (Exception ignored) { }
-                }
-            } catch (SecurityException error) {
-                state("权限不足", "需要蓝牙连接权限才能订阅通知。");
+                bonded = g.getDevice().getBondState() == BluetoothDevice.BOND_BONDED;
+            } catch (SecurityException ignored) { }
+            if (bonded) {
+                state("已配对", "正在订阅通知…");
+                subscribe();
                 return;
             }
-            ready = true;
-            state("已就绪", "可以通过蓝牙下发命令了。");
+            // 固件要求加密链路：先配对，配对完成后再订阅（否则 CCCD 写入会被拒）。
+            state("正在配对", "请在系统弹窗里确认配对。");
+            try {
+                registerBondReceiver();
+                if (!g.getDevice().createBond()) {
+                    // 有些机型直接返回 false，仍然等广播/超时兜底。
+                }
+            } catch (SecurityException error) {
+                state("权限不足", "需要蓝牙连接权限才能配对。");
+                return;
+            }
+            main.removeCallbacks(bondTimeout);
+            main.postDelayed(bondTimeout, 15000);
+        }
+
+        @Override public void onDescriptorWrite(BluetoothGatt g, BluetoothGattDescriptor descriptor, int status) {
+            if (descriptor != null && CCCD.equals(descriptor.getUuid())) {
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    ready = true;
+                    state("已就绪", "可以通过蓝牙控制（网页已可加载）。");
+                } else {
+                    state("订阅失败", "通知订阅被拒（状态 " + status + "），请重新连接。");
+                }
+            }
         }
 
         @Override public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic c, int status) {
             writing = false;
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                synchronized (writeQueue) { writeQueue.clear(); }
+                state("写入失败", "GATT 状态 " + status + (status == 5 || status == 15 ? "（未配对或链路未加密）" : ""));
+                return;
+            }
             flushWriteQueue();
         }
 
@@ -216,6 +241,46 @@ public final class BleControlClient {
             final int fStatus = status;
             final String fBody = body;
             main.post(() -> listener.onResult(id, fStatus, fBody));
+        }
+    };
+
+    private void subscribe() {
+        if (gatt == null || rspChar == null) return;
+        main.removeCallbacks(bondTimeout);
+        try {
+            gatt.setCharacteristicNotification(rspChar, true);
+            BluetoothGattDescriptor descriptor = rspChar.getDescriptor(CCCD);
+            if (descriptor == null) { ready = true; state("已就绪", "该设备没有通知描述符，仍可下发命令。"); return; }
+            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            if (!gatt.writeDescriptor(descriptor)) {
+                state("订阅失败", "通知订阅写入被拒，请重新连接。");
+            }
+        } catch (SecurityException error) {
+            state("权限不足", "需要蓝牙连接权限才能订阅通知。");
+        }
+    }
+
+    private void registerBondReceiver() {
+        if (bondReceiverRegistered) return;
+        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+        context.registerReceiver(bondReceiver, filter);
+        bondReceiverRegistered = true;
+    }
+
+    private void unregisterBondReceiver() {
+        if (!bondReceiverRegistered) return;
+        try { context.unregisterReceiver(bondReceiver); } catch (Exception ignored) { }
+        bondReceiverRegistered = false;
+    }
+
+    private final BroadcastReceiver bondReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context ctx, Intent intent) {
+            if (!BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(intent.getAction())) return;
+            int state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.BOND_NONE);
+            if (state == BluetoothDevice.BOND_BONDED) {
+                state("已配对", "正在订阅通知…");
+                subscribe();
+            }
         }
     };
 
@@ -266,6 +331,8 @@ public final class BleControlClient {
 
     public void disconnect() {
         stopScan();
+        unregisterBondReceiver();
+        main.removeCallbacks(bondTimeout);
         connected = false;
         ready = false;
         closeQuietly();

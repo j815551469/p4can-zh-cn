@@ -1,0 +1,17 @@
+/* BLE 模式下隐藏依赖 Wi-Fi / 大文件传输的入口 */
+[data-panel="panelOta"],
+[data-panel="panelWireless"],
+[data-panel="panelDevice"],
+[data-panel="panelPair"],
+[data-panel="panelDeviceDiag"],
+[data-panel="panelLabCapture"],
+[data-panel="panelLabDriverMonitor"],
+#devicesNavBtn,
+#wirelessShortcut,
+#changeProfileBtn,
+#rebootRow,
+#resetSettingsBtn,
+#resetNvsKeepBleBtn,
+#factoryResetBtn {
+  display: none !important;
+}

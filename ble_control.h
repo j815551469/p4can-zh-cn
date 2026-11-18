@@ -29,7 +29,7 @@
 #define BLE_CTRL_RSP_UUID     "50433441-0002-1000-8000-00805F9B34FB"
 #define BLE_CTRL_STA_UUID     "50433441-0003-1000-8000-00805F9B34FB"
 #define BLE_CTRL_NAME         "P4-CAN-BLE"
-#define BLE_CTRL_BODY_MAX     1200u
+#define BLE_CTRL_BODY_MAX     4096u
 
 struct BleCtrlCmd {
   uint16_t id;
@@ -60,49 +60,22 @@ static void bleCtrlSetError(const char *text) {
 
 static bool bleCtrlActive() { return bleCtrlRunning; }
 
-// ── 允许名单：只有这些端点能从 BLE 调用 ────────────────────────────────
-struct BleCtrlAllow {
-  const char *method;
-  const char *path;   // 不含查询串
-};
-
-static const BleCtrlAllow BLE_CTRL_ALLOW[] = {
-    // 只读
-    {"GET", "/api/features/status"},
-    {"GET", "/api/ble/status"},
-    {"GET", "/api/nag/config"},
-    {"GET", "/api/nag/stats"},
-    {"GET", "/api/summon/stats"},
-    {"GET", "/api/blinkA/stats"},
-    {"GET", "/api/continuous-ap/config"},
-    {"GET", "/api/r79/stats"},
-    {"GET", "/api/wifi/status"},
-    {"GET", "/api/snapshot"},
-    // 握持提示
-    {"POST", "/api/nag/update"},
-    {"POST", "/api/nag/mode"},
-    // 连续 AP
-    {"POST", "/api/continuous-ap/config"},
-    // 转向灯 / 自动转向灯
-    {"POST", "/api/blinkA/enable"},
-    {"POST", "/api/blinkA/disable"},
-    {"POST", "/api/blinkA/delay"},
-    {"POST", "/api/blinkA/timing"},
-    {"POST", "/api/blinkA/tx-mode"},
-    // TLSSC
-    {"POST", "/api/summon/tlssc-enable"},
-    {"POST", "/api/summon/tlssc-disable"},
-    {"POST", "/api/summon/tlssc-highway-gate"},
-    {"POST", "/api/summon/tlssc-noa-block"},
-    // R79 / 加速响应 / 驾驶员监控 / ISA
-    {"POST", "/api/r79/update"},
-    {"POST", "/api/features/ap-drive-profile"},
-    {"POST", "/api/driver-monitoring/config"},
-    {"POST", "/api/isa-suppression/config"},
-    {"POST", "/api/features/lab"},
+// ── 端点策略：放行 /api/*，危险端点见下面的拒绝前缀 ──────────────────
+// 危险/与本机强相关的端点不予放行；其余 /api/* 都允许，整站才能走 BLE。
+static const char *const BLE_CTRL_DENY_PREFIX[] = {
+    "/update",              // OTA
+    "/api/system/",         // 重置、重启、重初始化
+    "/api/profile/",        // 改车型档案
+    "/api/wifi/",           // 改热点
+    "/api/s3xy/",           // 按键配对/重置
+    "/api/researchcapture/",// 大块抓包
+    "/api/drivermonitor/",
+    "/api/ble/",            // 不让 BLE 自己关自己
 };
 
 static bool bleCtrlPathAllowed(const char *method, const char *pathWithQuery) {
+  if (!method || !pathWithQuery) return false;
+  if (strcmp(method, "GET") != 0 && strcmp(method, "POST") != 0) return false;
   char path[120];
   size_t n = 0;
   while (pathWithQuery[n] && pathWithQuery[n] != '?' && n < sizeof(path) - 1) {
@@ -110,10 +83,18 @@ static bool bleCtrlPathAllowed(const char *method, const char *pathWithQuery) {
     n++;
   }
   path[n] = '\0';
-  for (const BleCtrlAllow &e : BLE_CTRL_ALLOW) {
-    if (strcmp(e.method, method) == 0 && strcmp(e.path, path) == 0) return true;
+  if (strncmp(path, "/api/", 5) != 0) return false;
+  // 页面启动时要读的几个只读端点，虽在被拒前缀下，但本身无害。
+  if (strcmp(method, "GET") == 0) {
+    if (strcmp(path, "/api/s3xy/stats") == 0) return true;
+    if (strcmp(path, "/api/ble/status") == 0) return true;
+    if (strcmp(path, "/api/wifi/status") == 0) return true;
   }
-  return false;
+  for (const char *deny : BLE_CTRL_DENY_PREFIX) {
+    const size_t len = strlen(deny);
+    if (strncmp(path, deny, len) == 0) return false;
+  }
+  return true;
 }
 
 static String bleCtrlJsonEscape(const char *in) {
@@ -153,7 +134,16 @@ static void bleCtrlNotifyText(uint16_t id, int status, const String &body) {
   if (!bleCtrlRunning || !bleCtrlRspChar || !bleCtrlConnected) return;
   String msg = String((unsigned)id) + "|" + String(status) + "|" + body;
   const size_t total = msg.length();
-  const size_t chunk = 16;
+  // 按协商到的 MTU 分片：手机端 requestMtu(185) 后每片可发 ~180 B，
+  // 否则整站页面（几 KB 的 JSON）会慢到不可用。
+  size_t chunk = 16;
+  if (bleCtrlServer) {
+    const uint16_t mtu = bleCtrlServer->getPeerMTU(bleCtrlServer->getConnId());
+    if (mtu > 27) {
+      chunk = (size_t)mtu - 3 - 4;   // 去掉 ATT 头与我们的 4 字节帧头
+      if (chunk > 180) chunk = 180;
+    }
+  }
   uint8_t seq = 0;
   for (size_t off = 0; off < total; off += chunk) {
     const size_t n = (total - off > chunk) ? chunk : (total - off);
@@ -166,7 +156,7 @@ static void bleCtrlNotifyText(uint16_t id, int status, const String &body) {
     memcpy(frame + 4, msg.c_str() + off, n);
     bleCtrlRspChar->setValue(frame, 4 + n);
     bleCtrlRspChar->notify();
-    vTaskDelay(pdMS_TO_TICKS(12));
+    vTaskDelay(pdMS_TO_TICKS(6));
   }
 }
 

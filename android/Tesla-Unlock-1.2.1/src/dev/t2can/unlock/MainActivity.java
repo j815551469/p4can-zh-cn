@@ -23,6 +23,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -65,6 +66,9 @@ public final class MainActivity extends Activity {
     private String webResult = "not loaded";
     private Button devicesButton, menuButton, bleButton;
     private BleControlPanel blePanel;
+    private BleControlClient bleClient;
+    private boolean bleMode, blePageLoaded;
+    private static final String BLE_PAGE = "file:///android_asset/ble-dashboard.html";
     private boolean showingSettings;
     private static final int WIFI_PERMISSION = 103;
     private static final int BLE_PERMISSION = 104;
@@ -217,8 +221,8 @@ public final class MainActivity extends Activity {
         deviceLayout.topMargin=dp(10);connectionCard.addView(devicesButton,deviceLayout);
 
         bleButton = new Button(this);
-        prepareConnectionButton(bleButton); bleButton.setText("蓝牙控制（不连热点）");
-        bleButton.setOnClickListener(v -> openBleControl());
+        prepareConnectionButton(bleButton); bleButton.setText("蓝牙模式（不连热点）");
+        bleButton.setOnClickListener(v -> startBleWebMode());
         LinearLayout.LayoutParams bleLayout = new LinearLayout.LayoutParams(-1,dp(56));
         bleLayout.topMargin=dp(10);connectionCard.addView(bleButton,bleLayout);
         page.addView(connectionCard, new LinearLayout.LayoutParams(-1, -2));
@@ -337,10 +341,24 @@ public final class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(true);
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return !UrlPolicy.isDevice(request.getUrl().toString(), dashboardHome);
+                String target = request.getUrl().toString();
+                if (bleMode && target.startsWith("file:///android_asset/")) return false;
+                return !UrlPolicy.isDevice(target, dashboardHome);
             }
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                if (UrlPolicy.isDevice(request.getUrl().toString(), dashboardHome)) return null;
+                String target = request.getUrl().toString();
+                if (bleMode && BLE_PAGE.equals(target)) {
+                    try {
+                        String html = readAsset("ble-dashboard.html");
+                        String shim = readAsset("ble-shim.js");
+                        String hide = readAsset("ble-hide.css");
+                        html = html.replace("<head>", "<head><script>" + shim + "</script><style>" + hide + "</style>");
+                        return new WebResourceResponse("text/html", "UTF-8",
+                                new ByteArrayInputStream(html.getBytes(StandardCharsets.UTF_8)));
+                    } catch (Exception ignored) { }
+                }
+                if (bleMode && target.startsWith("file:///android_asset/")) return null;
+                if (UrlPolicy.isDevice(target, dashboardHome)) return null;
                 return new WebResourceResponse("text/plain", "UTF-8", 403, "Blocked",
                         java.util.Collections.emptyMap(), new ByteArrayInputStream(new byte[0]));
             }
@@ -352,6 +370,16 @@ public final class MainActivity extends Activity {
                 closeExporter();
             }
             @Override public void onPageFinished(WebView view, String url) {
+                if (bleMode && BLE_PAGE.equals(url)) {
+                    if (view != web || destroyed) return;
+                    loaded = true;
+                    dashboardLoadedOnce = true;
+                    loadStarted = false;
+                    connectionScreen.setVisibility(View.GONE);
+                    menuButton.setVisibility(View.VISIBLE);
+                    updateTheme();
+                    return;
+                }
                 if (view != web || !loadStarted || !UrlPolicy.isDevice(url, dashboardHome)) return;
                 final int epoch = documentEpoch;
                 web.evaluateJavascript(bridge, ignored -> {
@@ -457,7 +485,7 @@ public final class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results) {
         super.onRequestPermissionsResult(request,permissions,results);
         if(request==BLE_PERMISSION) {
-            if(BleControlClient.hasPermissions(this)) openBleControl();
+            if(BleControlClient.hasPermissions(this)) startBleWebMode();
             else toast("需要蓝牙权限才能用蓝牙控制。");
             return;
         }
@@ -472,19 +500,67 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void openBleControl() {
+    private void startBleWebMode() {
         if (destroyed) return;
         if (!BleControlClient.hasPermissions(this)) {
             requestPermissions(BleControlClient.requiredPermissions(), BLE_PERMISSION);
             return;
         }
-        if (blePanel == null) blePanel = new BleControlPanel(this);
-        blePanel.show();
+        if (bleClient == null) {
+            bleClient = new BleControlClient(this, new BleControlClient.Listener() {
+                public void onState(String state, String detail) {
+                    if (destroyed) return;
+                    connectionStatus.setText(state);
+                    connectionMessage.setText(detail);
+                    if (bleClient != null && bleClient.isConnected() && !blePageLoaded) loadBlePage();
+                }
+                public void onResult(int id, int status, String body) {
+                    if (destroyed || web == null || !bleMode) return;
+                    web.evaluateJavascript("window.__tuBleResult(" + id + "," + status + ","
+                            + org.json.JSONObject.quote(body == null ? "" : body) + ")", null);
+                }
+            });
+        }
+        bleMode = true;
+        blePageLoaded = false;
+        destroyDashboard();
+        connectionStatus.setText("正在连接蓝牙");
+        connectionMessage.setText("正在扫描 P4-CAN-BLE…");
+        bleClient.scan();
+    }
+
+    private void loadBlePage() {
+        if (destroyed || web != null) return;
+        blePageLoaded = true;
+        web = new WebView(this);
+        web.addJavascriptInterface(new BleBridge(), "TuBle");
+        FrameLayout.LayoutParams layout = new FrameLayout.LayoutParams(-1, -1);
+        layout.bottomMargin = dp(40);
+        root.addView(web, 0, layout);
+        configureWebView();
+        updateTheme();
+        webResult = "ble dashboard";
+        loadStarted = true;
+        web.loadUrl(BLE_PAGE);
+    }
+
+    /** 页面通过 window.TuBle 下发命令；回包由 onResult 调 __tuBleResult 送回。 */
+    private final class BleBridge {
+        @JavascriptInterface public boolean isReady() {
+            return bleClient != null && bleClient.isConnected();
+        }
+        @JavascriptInterface public int request(String method, String path) {
+            if (!bleMode || bleClient == null || !bleClient.isConnected()) return -1;
+            return bleClient.request(method, path);
+        }
     }
 
     private void disconnectDevice() {
         launchConnection.consume();
         pendingPermission=null;
+        if (bleClient != null) bleClient.disconnect();
+        bleMode = false;
+        blePageLoaded = false;
         if(manager!=null) manager.disconnect();
         destroyDashboard();
     }
