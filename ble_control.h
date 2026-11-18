@@ -213,29 +213,52 @@ static bool bleCtrlParse(const String &line, BleCtrlCmd &out) {
   return true;
 }
 
-// 回环调用本机 WebServer：复用现有 /api/* 处理器
-static bool bleCtrlLoopback(const BleCtrlCmd &c, int &status, String &body) {
+// 回环调用本机 WebServer：复用现有 /api/* 处理器。
+// AP 模式下的本机回环在某些状态下会失败（没有 station 关联时尤其明显），
+// 因此依次尝试 127.0.0.1、AP 地址、固定 192.168.4.1，并把每一路的错误码记下来。
+static int bleCtrlTryUrl(const String &url, const BleCtrlCmd &c, String &body) {
   HTTPClient http;
   WiFiClient client;
-  http.setConnectTimeout(1500);
-  http.setTimeout(3000);
-  // 用 AP 自己的地址做回环（lwIP 不一定编了 127.0.0.1 回环接口）；
-  // BLE 只在 AP 起来之后启动，所以这里一定有值。
-  IPAddress host = WiFi.softAPIP();
-  String url = String("http://") + host.toString() + c.path;
-  if (!http.begin(client, url)) {
-    bleCtrlSetError("loopback begin failed");
-    return false;
-  }
+  client.setTimeout(2);
+  http.setConnectTimeout(2000);
+  http.setTimeout(4000);
+  if (!http.begin(client, url)) return -1000;
+  http.setReuse(false);
   http.addHeader("X-P4-BLE", "1");
-  status = (strcmp(c.method, "POST") == 0) ? http.POST("") : http.GET();
-  if (status > 0) body = http.getString();
+  const int code = (strcmp(c.method, "POST") == 0) ? http.POST("") : http.GET();
+  if (code > 0) body = http.getString();
   http.end();
-  if (status <= 0) {
-    bleCtrlSetError("loopback request failed");
-    return false;
+  return code;
+}
+
+static bool bleCtrlLoopback(const BleCtrlCmd &c, int &status, String &body) {
+  IPAddress ap = WiFi.softAPIP();
+  String hosts[3];
+  hosts[0] = "127.0.0.1";
+  hosts[1] = ap.toString();
+  hosts[2] = "192.168.4.1";
+
+  String tried;
+  for (uint8_t i = 0; i < 3; i++) {
+    if (hosts[i].length() == 0 || hosts[i] == "0.0.0.0") continue;
+    bool duplicate = false;
+    for (uint8_t k = 0; k < i; k++) {
+      if (hosts[k] == hosts[i]) duplicate = true;
+    }
+    if (duplicate) continue;
+    const String url = String("http://") + hosts[i] + c.path;
+    const int code = bleCtrlTryUrl(url, c, body);
+    if (code > 0) {
+      status = code;
+      return true;
+    }
+    if (tried.length()) tried += " ";
+    tried += hosts[i] + "=" + String(code);
   }
-  return true;
+  char msg[96];
+  snprintf(msg, sizeof(msg), "loopback failed: %s", tried.c_str());
+  bleCtrlSetError(msg);
+  return false;
 }
 
 static void bleCtrlTaskFn(void *arg) {
@@ -251,7 +274,7 @@ static void bleCtrlTaskFn(void *arg) {
     String body;
     if (!bleCtrlLoopback(cmd, status, body)) {
       status = 0;
-      body = "loopback failed";
+      body = String("BLE loopback error: ") + bleCtrlLastError;
     }
     if (body.length() > BLE_CTRL_BODY_MAX) body = body.substring(0, BLE_CTRL_BODY_MAX);
     bleCtrlLastId = cmd.id;
