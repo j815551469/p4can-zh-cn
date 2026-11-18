@@ -224,8 +224,6 @@ public final class BleControlClient {
             if (data == null || data.length < 4) return;
             int id = (data[0] & 0xFF) | ((data[1] & 0xFF) << 8);
             boolean last = (data[3] & 0x01) != 0;
-            // 每片都确认：固件没收到 ACK 会重发这一片（最多 3 次）。
-            sendText("ACK " + id);
             if (id != pendingId) { pendingId = id; pending.setLength(0); }
             pending.append(new String(data, 4, data.length - 4, StandardCharsets.UTF_8));
             if (!last) return;
@@ -253,7 +251,8 @@ public final class BleControlClient {
             gatt.setCharacteristicNotification(rspChar, true);
             BluetoothGattDescriptor descriptor = rspChar.getDescriptor(CCCD);
             if (descriptor == null) { ready = true; state("已就绪", "该设备没有通知描述符，仍可下发命令。"); return; }
-            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            // 固件用 indication 发送（协议栈负责确认/重传），必须订阅 INDICATION。
+            descriptor.setValue(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
             if (!gatt.writeDescriptor(descriptor)) {
                 state("订阅失败", "通知订阅写入被拒，请重新连接。");
             }

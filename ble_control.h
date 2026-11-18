@@ -53,9 +53,10 @@ static int bleCtrlLastStatus = 0;
 static char bleCtrlLastBody[300] = "";
 static uint32_t bleCtrlCmdCount = 0;
 static uint32_t bleCtrlDropCount = 0;
-// 分片确认：手机每收到一片回一条 "ACK <id>"，没等到就重发该片。
-static volatile uint32_t bleCtrlAckCount = 0;
-static volatile uint16_t bleCtrlAckId = 0;
+// 分片确认：改用 indication，确认由 BLE 协议栈负责（对端 ATT 层确认），
+// 不再依赖应用层 ACK——应用层 ACK 会因为写队列和通知竞争而丢。
+static volatile uint32_t bleCtrlIndicateDone = 0;
+static volatile uint16_t bleCtrlAckId = 0;   // 保留旧字段，兼容旧 App 的 "ACK id" 写入
 
 static void bleCtrlSetError(const char *text) {
   snprintf(bleCtrlLastError, sizeof(bleCtrlLastError), "%s", text ? text : "");
@@ -162,16 +163,15 @@ static void bleCtrlNotifyText(uint16_t id, int status, const String &body) {
     frame[3] = last ? 0x01 : 0x00;
     memcpy(frame + 4, msg.c_str() + off, n);
     for (uint8_t attempt = 0; attempt < 3; attempt++) {
-      const uint32_t before = bleCtrlAckCount;
+      const uint32_t before = bleCtrlIndicateDone;
       bleCtrlRspChar->setValue(frame, 4 + n);
-      bleCtrlRspChar->notify();
-      // 等手机回 ACK；超时（含旧版 App 不回 ACK 的情况）就继续，不阻塞流程。
-      for (uint8_t wait = 0; wait < 15; wait++) {
-        if (bleCtrlAckCount != before) break;
+      bleCtrlRspChar->notify(false);   // false = indication（需要对端确认）
+      bool confirmed = false;
+      for (uint8_t wait = 0; wait < 40; wait++) {
+        if (bleCtrlIndicateDone != before) { confirmed = true; break; }
         vTaskDelay(pdMS_TO_TICKS(10));
       }
-      if (bleCtrlAckCount != before) break;
-      vTaskDelay(pdMS_TO_TICKS(10));
+      if (confirmed) break;
     }
   }
 }
@@ -261,10 +261,8 @@ class BleCtrlCmdCallbacks : public BLECharacteristicCallbacks {
     String value = ch->getValue();
     value.trim();
     if (value.startsWith("ACK")) {
-      // 分片确认，不进命令队列
-      const long ackId = value.substring(3).toInt();
-      bleCtrlAckId = (uint16_t)ackId;
-      bleCtrlAckCount++;
+      // 旧版 App 的分片确认。现在改用 indication，确认由协议栈负责，
+      // 这里直接忽略，避免把它误当成 indication 确认。
       return;
     }
     BleCtrlCmd cmd;
@@ -291,8 +289,15 @@ class BleCtrlCmdCallbacks : public BLECharacteristicCallbacks {
   }
 };
 
+class BleCtrlRspCallbacks : public BLECharacteristicCallbacks {
+  void onStatus(BLECharacteristic *, Status status, uint32_t) override {
+    if (status == SUCCESS_INDICATE || status == SUCCESS_NOTIFY) bleCtrlIndicateDone++;
+  }
+};
+
 static BleCtrlServerCallbacks bleCtrlServerCb;
 static BleCtrlCmdCallbacks bleCtrlCmdCb;
+static BleCtrlRspCallbacks bleCtrlRspCb;
 
 static void bleCtrlLoadConfig() {
   Preferences p;
@@ -354,8 +359,10 @@ static bool bleCtrlStart() {
   bleCtrlCmdChar->setCallbacks(&bleCtrlCmdCb);
   bleCtrlCmdChar->setAccessPermissions(ESP_GATT_PERM_WRITE_ENCRYPTED);
 
-  bleCtrlRspChar = svc->createCharacteristic(BLE_CTRL_RSP_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+  bleCtrlRspChar = svc->createCharacteristic(
+      BLE_CTRL_RSP_UUID, BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_INDICATE);
   bleCtrlRspChar->addDescriptor(new BLE2902());
+  bleCtrlRspChar->setCallbacks(&bleCtrlRspCb);
   bleCtrlRspChar->setAccessPermissions(ESP_GATT_PERM_READ_ENCRYPTED);
 
   bleCtrlStaChar = svc->createCharacteristic(BLE_CTRL_STA_UUID, BLECharacteristic::PROPERTY_READ);

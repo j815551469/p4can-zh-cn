@@ -1941,8 +1941,11 @@ setInterval(()=>{if(universalBootReady){pollTick(false);renderHeartbeatSnapshot(
       if(s.migrationNotice)openModal('migrationNoticeModal');return;
     }
     setupMessage();applyProfile(s);document.body.classList.remove('setup-active');
-    await refreshFeatures();await fetchDriverMonitoringControl();await fetchIsaSuppressionControl();await fetchContinuousAp();await fetchVisionControlLab();
-    universalBootReady=true;otaUiPhase='idle';if(s.nagSupported){try{await loadNag()}catch(e){}}
+    // 每个能力接口单独容错：某个接口失败（例如当前车型不支持）不能中断整段启动，
+    // 否则后面的 loadNag() 根本不执行，握持提示抑制会一直显示“模式 —”/关闭。
+    for(const step of [refreshFeatures,fetchDriverMonitoringControl,fetchIsaSuppressionControl,fetchContinuousAp,fetchVisionControlLab]){try{await step()}catch(e){}}
+    universalBootReady=true;otaUiPhase='idle';
+    try{await loadNag()}catch(e){}
     forceHomeTop();forcePoll();
     if(otaJustUpdated)history.replaceState(null,'',location.pathname);
   }
