@@ -5641,6 +5641,27 @@ static void httpResetRuntimeStats() {
   server.send(200, "application/json", "{\"ok\":true,\"action\":\"runtime-stats-reset\"}");
 }
 
+static void httpBleCtrlStatus() {
+  const String j = bleCtrlStatusJson();
+  if (bleCtrlStaChar) bleCtrlStaChar->setValue(j.c_str());
+  server.send(200, "application/json", j);
+}
+
+static void httpBleCtrlEnable() {
+  if (!bleCtrlPersist(true)) {
+    server.send(500, "application/json", "{\"enabled\":false,\"running\":false,\"error\":\"NVS write failed\"}");
+    return;
+  }
+  const bool ok = bleCtrlStart();
+  server.send(ok ? 200 : 500, "application/json", bleCtrlStatusJson());
+}
+
+static void httpBleCtrlDisable() {
+  bleCtrlStop();
+  bleCtrlPersist(false);
+  server.send(200, "application/json", bleCtrlStatusJson());
+}
+
 static void webTask(void *arg) {
   P4CAN_SERIAL_PRINTLN("Wi-Fi：正在启动热点…");
   uint8_t apFailWindows = 0;
@@ -5670,6 +5691,9 @@ static void webTask(void *arg) {
   P4CAN_SERIAL_PRINTF("AP: SSID=%s IP=%s\n", wifiApActiveSsid.c_str(), ip.toString().c_str());
 #endif
 
+  // BLE 控制通道：热点起来之后才能起 BLE（Hosted 共享同一个射频）
+  bleCtrlBootStart();
+
   server.on("/", HTTP_GET, httpRoot);
   server.on("/apple-touch-icon.png", HTTP_GET, httpAppleTouchIcon);
   server.on("/fonts/geist-lab.woff2", HTTP_GET, httpLabGeistFont);
@@ -5681,6 +5705,13 @@ static void webTask(void *arg) {
   server.on("/api/system/reboot", HTTP_POST, httpRebootP4Can);
   server.on("/api/wifi/status", HTTP_GET, httpWifiStatus);
   server.on("/api/wifi/apply", HTTP_POST, httpWifiApply);
+  // BLE 控制通道的开关与状态（手机不连热点时也只能先靠这条 Wi-Fi 路径打开一次）
+  server.on("/api/ble/status", HTTP_GET, httpBleCtrlStatus);
+  server.on("/api/ble/enable", HTTP_POST, httpBleCtrlEnable);
+  server.on("/api/ble/disable", HTTP_POST, httpBleCtrlDisable);
+  // 也允许 GET，方便在手机浏览器地址栏里直接打开启用/停用
+  server.on("/api/ble/enable", HTTP_GET, httpBleCtrlEnable);
+  server.on("/api/ble/disable", HTTP_GET, httpBleCtrlDisable);
   server.on("/api/ota/status", HTTP_GET, httpOtaStatus);
   server.on("/update", HTTP_POST, httpOtaFinish, httpOtaUpload);
 

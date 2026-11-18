@@ -297,3 +297,26 @@ C5 板上都正常**。
 | 程序占用 | 1,394,118 B / 4,718,592 B（29%） |
 | 应用镜像 | 1,394,832 B · SHA256 `179b2b15…` |
 | 整片镜像 | 33,554,432 B · SHA256 `d4b587ac…` |
+
+### 2026-11-18 BLE 控制通道（手机不连热点也能控制）
+
+新增 `ble_control.h`：ESP32 作 BLE peripheral，手机作 central。
+
+| 项 | 内容 |
+|---|---|
+| 广播名 | `P4-CAN-BLE` |
+| Service | `50433441-0000-1000-8000-00805F9B34FB` |
+| CMD（Write） | `50433441-0001-…`：一行文本 `<id> <GET\|POST> <path>` |
+| RSP（Notify） | `50433441-0002-…`：[id_lo][id_hi][seq][flags] + 16B/片，flags&1=末片 |
+| STA（Read） | `50433441-0003-…`：状态 JSON，含最近一次 `last{id,status,body}` |
+| 安全 | 写入/读取要求加密链路（Just Works 配对 + 绑定） |
+| 实现 | 命令经 AP 自身地址回环调用 WebServer，复用现有 `/api/*` 处理器 |
+| 白名单 | 状态查询 + Nag / 连续 AP / 转向灯 / TLSSC / R79 / 加速响应 / 驾驶员监控 / ISA；**不含** OTA、系统重置、profile、抓包 |
+| 开关 | `GET /api/ble/status|enable|disable`（POST 亦可），状态存 NVS `blectl/on` |
+| 与 S3XY 共存 | 共用同一个 BLE host；S3XY 关闭时不再 `deinit` 掉 host |
+
+| 构建 | 值 |
+|---|---|
+| 程序占用 | 1,429,426 B / 4,718,592 B（30%） |
+| 应用镜像 | 1,430,144 B · SHA256 `4f370a3d…` |
+| 刷写 | 应用区 `0x10000`，Hash verified |

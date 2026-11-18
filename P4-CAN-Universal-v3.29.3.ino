@@ -76,6 +76,7 @@
 #include "can_research_capture.h"
 #include "driver_monitor_capture.h"
 #include "s3xy_ble.h"
+#include "ble_control.h"
 #include "can_core.h"
 #include "can_busoff_persistence.h"
 #include "vehicle_logic.h"

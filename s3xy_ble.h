@@ -3,6 +3,9 @@
 #include "p4_ble_crypto.h"
 #include "text_format_arduino.h"
 
+// ble_control.h 在后面引入；这里先声明，供“是否共享同一个 BLE host”判断用。
+static bool bleCtrlActive();
+
 // S3XY BUTTON BLE / REGISTRY / AUTO-RECONNECT
 // Kept in the same translation unit to preserve proven runtime behavior.
 
@@ -1558,7 +1561,7 @@ static bool s3xyMapperInit() {
     s3xyInitMark(3, "crypto self-test blocked this boot");
     return false;
   }
-  if (!BLEDevice::init("P4-CAN_S3XY_MULTI")) {
+  if (!BLEDevice::getInitialized() && !BLEDevice::init("P4-CAN_S3XY_MULTI")) {
     s3xyInitMark(4, "BLEDevice::init failed");
     s3xyLogPush(S3XY_LOG_ERROR, "BLE host/security observer initialization failed");
     return false;
@@ -1585,7 +1588,7 @@ static bool s3xyMapperInit() {
       // the caller keeps s3xyBleInitialized false on this failure path.
       s3xyInitMark(6, "crypto self-test failed; pairing blocked");
       p4BleSecurityShutdown();
-      BLEDevice::deinit(false);
+      if (!bleCtrlActive()) BLEDevice::deinit(false);
       return false;
     }
   }
@@ -1766,7 +1769,8 @@ static void s3xyRuntimeShutdown() {
     // impossible. Current Arduino-ESP32 deinit(false) tears down host/controller
     // and resets its initialized flag while preserving reinitialization support.
     p4BleSecurityShutdown();
-    BLEDevice::deinit(false);
+    // BLE 控制通道还在用同一个 host 时不能 deinit，否则会把它的 GATT 服务一起拆掉。
+    if (!bleCtrlActive()) BLEDevice::deinit(false);
   }
 
   portENTER_CRITICAL(&s3xyMux);
