@@ -359,3 +359,34 @@ enabled: true · storedEnabled: true · nvsReadError: false · nvsCorrupt: false
 
 修复：放行 `GET /api/profile/status`（仍拒绝 `POST /api/profile/select`，
 即可以读档案、不能改档案）与 `GET /api/system/stats`。
+
+### 2026-11-18 修复：蓝牙模式只有第一次能进，之后全部超时
+
+现象：BLE 模式首次连接正常；断开重连后页面停在「车型档案」界面，
+顶部 `profile=? setupMode=? · nag=?`，底部红条 `/api/profile/status（HTTP 0）`。
+
+排查数据（`/api/ble/status`，用户实测）：
+
+```
+connected: true · commands: 73 -> 83 · dropped: 0
+error: "loopback request failed"
+last: { id: 21, status: 0, body: "loopback failed" }
+```
+
+即手机侧命令全部到达固件、格式全对，但**固件自己的回环 HTTP 请求失败**，
+所以手机收不到任何响应。AP 模式下没有 station 关联时，本机发往
+`192.168.4.1` 的包不保证被 lwIP 收回本地。
+
+修复：回环依次尝试 `127.0.0.1` → `WiFi.softAPIP()` → `192.168.4.1`，
+任一成功即返回；全失败时把每一路的 HTTP 错误码写入 `error` 并回给手机。
+
+同一现象的其他成因（本轮一并修掉）：
+
+- 回包前用 `getConnectedCount()` 判断，替代可能残留的 `bleCtrlConnected` 标志；
+- 广播看门狗：未连接时每 5 秒重开广播，断开后延时 300 ms 重启；
+- APK 每次进入蓝牙模式重建 GATT 客户端；断开改为 `disconnect()` + 延时 `close()`；
+- 蓝牙模式下打开连接菜单不再误报「请等待文件传输完成」
+  （未注入 dashboard-bridge.js，`__tuNativeBusy` 恒为 true）；
+- 仪表板启动逐步容错，`loadNag()` 总是执行（修「握持提示抑制」显示关闭）。
+
+实测结论：修复后蓝牙模式首次连接与断开重连均正常。
