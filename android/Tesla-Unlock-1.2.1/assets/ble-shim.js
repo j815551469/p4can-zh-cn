@@ -1,25 +1,16 @@
-/* BLE 模式注入脚本：把页面里的 /api/* 请求改走蓝牙，并在顶部显示一条状态行。 */
+/* BLE 模式注入脚本：把页面里的 /api/* 请求改走蓝牙。
+ *
+ * 稳定性策略：
+ *   - 429 / 504 自动重试（固件队列满时会这样回）
+ *   - 200 但 JSON 被截断（分片丢失）也重试
+ *   - 全部失败时沿用该 path 上一次成功的内容，避免页面把“没读到”当成
+ *     “没档案 / 开关是关的”而回落到首次启动界面
+ *   - 只有真正出错时才在底部显示红条（正常使用时没有任何额外 UI）
+ */
 (function () {
   var pending = new Map();
-  var cache = new Map();
+  var cache = new Map();          // path -> 最近一次成功的响应体
   var ATTEMPTS = 4;
-  var info = { profile: '?', setup: '?', nag: '?' };
-
-  function banner() {
-    var el = document.getElementById('__ble_status');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = '__ble_status';
-      el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;' +
-        'background:rgba(17,17,17,.88);color:#fff;font:11px/1.5 system-ui;' +
-        'padding:4px 8px;white-space:pre-wrap';
-      document.addEventListener('DOMContentLoaded', function () { document.body.appendChild(el); });
-      if (document.body) document.body.appendChild(el);
-    }
-    el.textContent = '蓝牙模式 · profile=' + info.profile +
-      ' setupMode=' + info.setup + ' · nag=' + info.nag;
-    return el;
-  }
 
   function errorBanner(text) {
     try {
@@ -36,31 +27,19 @@
     } catch (e) { }
   }
 
-  function noteResult(path, text) {
-    try {
-      var data = JSON.parse(text);
-      if (path.indexOf('/api/profile/status') === 0) {
-        info.profile = String(data.profile === undefined ? '?' : data.profile);
-        info.setup = String(!!data.setupMode);
-      } else if (path.indexOf('/api/nag/config') === 0) {
-        info.nag = String(!!data.enabled);
-      }
-      banner();
-    } catch (e) { }
-  }
-
   // 无法解析的帧：App 会把原始十六进制发过来
   window.__tuBleRaw = function (hex) {
     errorBanner('收到无法解析的帧（前 48 字节）：' + hex);
   };
 
+  // 原生侧收到完整回包后调用：__tuBleResult(id, status, body)
   window.__tuBleResult = function (id, status, body) {
     var settle = pending.get(id);
     if (!settle) return;
     pending.delete(id);
     var text = (typeof body === 'string') ? body : '';
     if (status === 200) {
-      try { JSON.parse(text); cache.set(settle.path, text); noteResult(settle.path, text); }
+      try { JSON.parse(text); cache.set(settle.path, text); }
       catch (e) { settle.invalid = true; }
     }
     settle.done(status, text);
@@ -132,6 +111,4 @@
   };
 
   window.__p4BleMode = true;
-  if (document.body) banner();
-  else document.addEventListener('DOMContentLoaded', banner);
 })();
