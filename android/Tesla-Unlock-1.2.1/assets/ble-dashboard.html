@@ -627,13 +627,13 @@ body.p4-2027 .panel{scroll-padding-bottom:calc(100px + env(safe-area-inset-botto
 <div class="listrow clickable" data-panel="panelLabSummonHeartbeat" id="summonHeartbeatLabRow"><div><div class="listkey">召唤心跳覆写</div><div class="listdesc">测试召唤心跳信号。</div></div><div class="rowRight"><span class="value" id="summonHeartbeatRowState">实验</span><span class="chev">›</span></div></div>
 <div class="listrow clickable" data-panel="panelLabAutoLaneChange"><div><div class="listkey">自动变道使能</div><div class="listdesc">测试变道使能信号。</div></div><div class="rowRight"><span class="value">实验</span><span class="chev">›</span></div></div>
 <div class="listrow clickable" data-panel="panelLabDriverWindow" id="driverWindowLabRow"><div><div class="listkey">驾驶员车窗测试</div><div class="listdesc">在 P 挡测试车窗开启。</div></div><div class="rowRight"><span class="value" id="driverWindowRowState">测试</span><span class="chev">›</span></div></div>
-<div class="listrow clickable" data-panel="panelLabCapture"><div><div class="listkey">CAN 研究抓包</div><div class="listdesc">记录并下载 CAN 信号。</div></div><span class="chev">›</span></div>
+<div class="listrow clickable" data-panel="panelGearShift" id="gearShiftRow"><div><div class="listkey">自动换挡</div><div class="listdesc">根据雷达和原车提示自动切换 P/D/R。</div></div><div class="rowRight"><span class="value" id="gearShiftRowState">关闭</span><span class="chev">›</span></div></div><div class="listrow clickable" data-panel="panelLabCapture"><div><div class="listkey">CAN 研究抓包</div><div class="listdesc">记录并下载 CAN 信号。</div></div><span class="chev">›</span></div>
 <div class="listrow clickable" data-panel="panelLabDriverMonitor" id="labDriverMonitorRow"><div><div class="listkey">驾驶员监控抓包</div><div class="listdesc">记录驾驶员监控信号。</div></div><span class="chev">›</span></div>
 </section>
 </main>
 </div>
 <section class="panel" id="panelVisionControl"><div class="panelin"><div class="paneltop"><button aria-label="返回" class="backbtn"><svg aria-hidden="true" class="backIcon" viewbox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></button><div class="paneltitle">设置</div></div><div class="panelHero">视觉限速控制</div><div class="panelSub">辅助驾驶期间生效 · 默认关闭</div>
-<section class="card"><div class="labControlRow"><div><div class="labControlTitle">关闭视觉限速控制</div><div class="labControlSub">默认关闭</div></div><label class="toggle"><input aria-label="关闭视觉限速控制" id="visionControlDisableToggle" type="checkbox" disabled/><span class="track"></span></label></div><div class="labControlRow tuUiHidden" id="visionControlBusWrap"><div><div class="labControlTitle">注入总线</div><div class="labControlSub">选择该请求使用的 CAN 总线</div></div><select aria-label="视觉限速控制的注入总线" class="selectArrow labSelect" id="visionControlBus" disabled><option value="0">底盘</option><option value="1">车身</option></select></div><div class="softNote tuUiHidden" id="visionControlBusUnavailable">当前拓扑下无法使用已保存的「车身」。请选择「底盘」以启用该请求。</div><div class="body"><div class="r"><span class="rk2">请求状态</span><span id="visionControlState">—</span></div><div class="r"><span class="rk2">原车 → 请求的 bit49</span><span id="visionControlStock">— → —</span></div><div class="r"><span class="rk2">所选总线 · 接收 / 时长</span><span id="visionControlRoute">—</span></div><div class="r"><span class="rk2">发送 成功 / 失败</span><span id="visionControlTx">0 / 0</span></div></div><div class="softNote">在 AP 状态新鲜有效时请求 0x3FD MUX1 bit49=0；关闭则保留原车值。车辆是否接受、以及标志牌相关的减速效果均未经验证。</div><div class="softNote" id="visionControlSaveState" role="status">正在加载已保存的设置…</div></section>
+<section class="card"><div class="labControlRow"><div><div class="labControlTitle">关闭视觉限速控制</div><div class="labControlSub">默认关闭</div></div><label class="toggle"><input aria-label="关闭视觉限速控制" id="visionControlDisableToggle" type="checkbox" disabled/><span class="track"></span></label></div><div class="labControlRow tuUiHidden" id="visionControlBusWrap"><div><div class="labControlTitle">注入总线</div><div class="labControlSub">选择该请求使用的 CAN 总线</div></div><select aria-label="视觉限速控制的注入总线" class="selectArrow labSelect" id="visionControlBus" disabled><option value="0">底盘</option><option value="1">车身</option></select></div><div class="softNote tuUiHidden" id="visionControlBusUnavailable">当前拓扑下无法使用已保存的「车身」。请选择「底盘」以启用该请求。</div><div class="body"><div class="r"><span class="rk2">请求状态</span><span id="visionControlState">—</span></div><div class="r"><span class="rk2">原车 → 请求的 bit49</span><span id="visionControlStock">— → —</span></div><div class="r"><span class="rk2">所选总线 · 接收 / 时长</span><span id="visionControlRoute">—</span></div><div class="r"><span class="rk2">发送 成功 / 失败</span><span id="visionControlTx">0 / 0</span></div></div><div class="softNote">在 AP 状态新鲜有效时请求 0x3FD MUX1 bit49=0；关闭则保留原车值。车辆是否接受、以及标志牌相关的减速效果均未经验证。</div><div class="softNote" id="visionControlSaveState" role="status">正在加载已保存的设置…</div></section><section class="panel" id="panelGearShift"><div class="panelin"><div class="paneltop"><button aria-label="返回" class="backbtn"><svg aria-hidden="true" class="backIcon" viewbox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></button><div class="paneltitle">Lab</div></div><div class="panelHero">自动换挡</div><div class="panelSub">仅在 2021 款 Model Y 验证过 · 默认关闭</div><section class="card"><div class="labControlRow"><div><div class="labControlTitle">开启自动换挡</div><div class="labControlSub">每次换挡仍需踩刹车授权。</div></div><label class="toggle"><input id="gearShiftEnable" type="checkbox"/><span class="track"></span></label></div><div class="softNote">报文与规则来自逆向，Model Y 焕新版与 Model 3 尚未适配。仅限封闭场地使用；车旁有人或障碍物时切勿开启。</div><div class="body"><div class="r"><span class="rk2">车型支持</span><span id="gearShiftProfile">—</span></div><div class="r"><span class="rk2">执行状态</span><span id="gearShiftState">—</span></div><div class="r"><span class="rk2">候选来源</span><span id="gearShiftSource">—</span></div><div class="r"><span class="rk2">目标 / 原因</span><span id="gearShiftTarget">—</span></div><div class="r"><span class="rk2">协议</span><span id="gearShiftProtocol">—</span></div><div class="r"><span class="rk2">服务计数</span><span id="gearShiftTicks">0</span></div></div></section></div></section>
 </div></section>
 <section class="panel" id="panelLabR79ApControl"><div class="panelin"><div class="paneltop"><button aria-label="返回" class="backbtn"><svg aria-hidden="true" class="backIcon" viewbox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></button><div class="paneltitle">实验室</div></div><div class="panelHero">R79 AP 控制</div><div class="panelSub">分别设置 AP 与手动驾驶期间的 R79 行为。</div>
 <section class="card"><div class="labControlRow"><div><div class="labControlTitle">R79 AP 控制</div><div class="labControlSub">关闭后保持默认 AP 行为</div></div><label class="toggle"><input aria-label="R79 AP 控制" id="r79ApControlToggle" type="checkbox" disabled/><span class="track"></span></label></div><div class="labControlRow"><div><div class="labControlTitle">允许手动驾驶期间使用 R79</div><div class="labControlSub">独立设置 · 默认关闭</div></div><label class="toggle"><input aria-label="允许手动驾驶期间使用 R79" id="r79AllowManualDriving" type="checkbox" disabled/><span class="track"></span></label></div><div class="tuUiHidden" id="r79ApControls"><div class="labControlRow"><div><div class="labControlTitle">AP 策略</div></div><select aria-label="R79 AP 策略" class="selectArrow labSelect" id="r79ApControlMode" disabled><option value="0">AP 期间阻断</option><option value="1">AP 结束后延迟</option></select></div><div class="fieldgrid tuUiHidden" id="r79ApDelayWrap"><div class="field full"><label for="r79ApDelaySeconds">AP 延迟（秒）</label><input aria-label="R79 AP 延迟（秒）" id="r79ApDelaySeconds" inputmode="numeric" min="2" max="10" step="1" type="number" value="2" disabled/></div></div></div><div class="body"><div class="r"><span class="rk2">门控状态</span><span id="r79ApGateState">—</span></div><div class="r"><span class="rk2">剩余</span><span id="r79ApRemaining">—</span></div></div><div class="softNote">开启仅绕过手动 D/R 抑制，原有 AP 策略与传输安全仍然生效。</div><div class="softNote" id="r79ApSaveState" role="status">正在加载已保存的设置…</div></section>
@@ -1053,6 +1053,51 @@ function renderDashboardPollRate(){const e=$('dashboardPollRate'),d=$('dashboard
 if($('dashboardThemeMode')){$('dashboardThemeMode').onchange=e=>{window.p4Theme.setMode(e.target.value);syncSettingChoices('data-theme-choice',window.p4Theme.mode)};window.p4Theme.refresh();syncSettingChoices('data-theme-choice',window.p4Theme.mode)}
 document.querySelectorAll('[data-theme-choice]').forEach(button=>button.onclick=()=>{window.p4Theme.setMode(button.dataset.themeChoice);syncSettingChoices('data-theme-choice',window.p4Theme.mode)});
 document.querySelectorAll('[data-poll-choice]').forEach(button=>button.onclick=()=>setDashboardPollRate(button.dataset.pollChoice));
+
+  // ── Auto Shift（实验室） ──────────────────────────────────────────────
+  let gearShiftSaved = null;
+  function renderGearShift(s) {
+    if (!s) return;
+    const on = s.executionEnabled === true;
+    const row = $('gearShiftRowState');
+    if (row) row.textContent = on ? (s.controlPermission ? '待发' : 'ON') : 'OFF';
+    const en = $('gearShiftEnable');
+    if (en && document.activeElement !== en) en.checked = on;
+    if ($('gearShiftProfile')) $('gearShiftProfile').textContent = s.profileSupported ? 'Yes' : 'No';
+    if ($('gearShiftState')) $('gearShiftState').textContent = s.state || '—';
+    if ($('gearShiftSource')) $('gearShiftSource').textContent = s.source || '—';
+    if ($('gearShiftTarget')) $('gearShiftTarget').textContent =
+      (s.target || '—') + ' · ' + (s.reason || '—');
+    if ($('gearShiftProtocol')) $('gearShiftProtocol').textContent = s.protocol || '—';
+    if ($('gearShiftTicks')) $('gearShiftTicks').textContent =
+      Number(s.serviceCount || 0).toLocaleString();
+  }
+  async function fetchGearShift() {
+    try { const s = await jget('/api/gear-shift/status'); gearShiftSaved = s; renderGearShift(s); }
+    catch (e) { }
+  }
+  async function postGearShift(params) {
+    const r = await post('/api/gear-shift/config?' + new URLSearchParams(params).toString());
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || j.ok === false) throw new Error(j?.error || ('HTTP ' + r.status));
+    gearShiftSaved = j; renderGearShift(j);
+  }
+  if ($('gearShiftEnable')) {
+    $('gearShiftEnable').onchange = async (e) => {
+      const want = e.target.checked;
+      if (want) {
+        const ok = confirm('自动换挡只适用于已适配的车型（目前仅 2021 款 Model Y）。\\n'
+          + '开启后踩下刹车可能真的换挡，请先在封闭场地确认。');
+        if (!ok) { e.target.checked = false; return; }
+      }
+      try {
+        await postGearShift({ enabled: want ? 1 : 0 });
+      } catch (err) {
+        e.target.checked = !want;
+        alert('自动换挡设置失败：' + (err && err.message ? err.message : err));
+      }
+    };
+  }
 async function loadNag(){try{nagCfg=await jget('/api/nag/config');renderNagCfg()}catch(e){}}
 const NAG_MODE_UI_COPY={
 0:{kicker:'经典 · 稳定',title:'模式 A',text:'AP 激活时按经典扭矩表注入。',tags:['扭矩表','仅 AP']},
@@ -1694,14 +1739,15 @@ async function fetchLabSnapshot(){const s=await fetchPageSnapshot('lab-lite');if
 async function fetchSettingsSnapshot(){const s=await fetchPageSnapshot('settings-lite');if(s){renderSettingsLite(s);settingsLiteValid=true}}
 async function fetchHeartbeat(){await fetchPageSnapshot('heartbeat')}
 if($('countryOverrideMode'))$('countryOverrideMode').onchange=()=>updateCountryOverrideMode('countryMode');if($('countryMapMode'))$('countryMapMode').onchange=()=>updateCountryOverrideMode('mapMode');
-const pollLast={driverMonitoringRecovery:0,isaSuppressionRecovery:0,nag:0,blink:0,sum:0,sys:0,s3:0,ulc:0,autoLc:0,country:0,r79:0,humanLab:0,pedalMap:0,driverMon:0,summonHeartbeat:0,homeSnap:0,labSnap:0,settingsSnap:0,heartbeat:0};
+const pollLast={driverMonitoringRecovery:0,isaSuppressionRecovery:0,nag:0,blink:0,sum:0,sys:0,s3:0,ulc:0,autoLc:0,country:0,r79:0,humanLab:0,pedalMap:0,driverMon:0,summonHeartbeat:0,homeSnap:0,labSnap:0,settingsSnap:0,heartbeat:0,gearShift:0};
 function activePanelId(){return document.querySelector('.panel.show')?.id||''}
 function pollDue(k,ms,fn,now,force=false){if(force||now-pollLast[k]>=ms){pollLast[k]=now;fn()}}
 function pollTick(force=false){
   if(otaUploading||downloadInProgress||document.hidden)return;
   const now=Date.now(),p=activePanelId();
   if(p){
-    if(p==='panelNag')pollDue('nag',800,fetchNag,now,force);
+    if(p==='panelGearShift')pollDue('gearShift',500,fetchGearShift,now,force);
+    else if(p==='panelNag')pollDue('nag',800,fetchNag,now,force);
     else if(p==='panelBlink')pollDue('blink',800,fetchBlink,now,force);
     else if(p==='panelSummon')pollDue('sum',800,fetchSum,now,force);
     else if(p==='panelR79')pollDue('r79',800,fetchR79,now,force);

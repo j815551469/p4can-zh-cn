@@ -888,5 +888,17 @@
   "Firmware .bin file": "固件 .bin 文件",
   "Dashboard": "控制台",
   "Leave blank to keep current password": "留空表示保持当前密码",
-  "BLE control": "蓝牙控制通道"
+  "BLE control": "蓝牙控制通道",
+  "Auto Shift": "自动换挡",
+  "Shift P/D/R from radar and vehicle hints.": "根据雷达和原车提示自动切换 P/D/R。",
+  "Validated only on the 2021 Model Y · default OFF": "仅在 2021 款 Model Y 验证过 · 默认关闭",
+  "Enable auto shift": "开启自动换挡",
+  "Every shift still needs a brake press to authorize.": "每次换挡仍需踩刹车授权。",
+  "Frames and rules are reverse-engineered. Model Y Juniper and Model 3 are not adapted. Use only on a closed course, and never enable it while people or obstacles are near the car.": "报文与规则来自逆向，Model Y 焕新版与 Model 3 尚未适配。仅限封闭场地使用；车旁有人或障碍物时切勿开启。",
+  "Profile supported": "车型支持",
+  "Execution": "执行状态",
+  "Candidate": "候选来源",
+  "Target / reason": "目标 / 原因",
+  "Protocol": "协议",
+  "Service ticks": "服务计数"
 }
