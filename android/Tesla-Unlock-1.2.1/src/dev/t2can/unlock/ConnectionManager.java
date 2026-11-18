@@ -124,15 +124,15 @@ public final class ConnectionManager {
         if (closed) return;
         profile = selected; automaticMode = automatic; token = session.begin(); final long id = token;
         startedAt = SystemClock.elapsedRealtime(); lastHealth = null; localRoute = "unknown"; linkState = "unknown";
-        status("CHECKING", "Checking the device on existing Wi-Fi.");
-        deadline = () -> { if (session.accepts(id) && !session.isReady()) fail("Connection timed out. You can try manual mode."); };
+        status("CHECKING", "正在检查已连接 Wi-Fi 上的设备。");
+        deadline = () -> { if (session.accepts(id) && !session.isReady()) fail("连接超时，可以试试手动连接。"); };
         main.postDelayed(deadline, 40000);
         // A failed Android request must get a fresh request, not probes on its retiring network.
         if (retry) { request(id, automatic); return; }
         ArrayList<Network> candidates = new ArrayList<>();
         try {
             for (Network n : cm.getAllNetworks()) if (wifi(n) && ssidMatches(n, automatic)) candidates.add(n);
-        } catch (RuntimeException e) { fail("Check network state permissions."); return; }
+        } catch (RuntimeException e) { fail("请检查网络状态权限。"); return; }
         checkExisting(id, candidates, 0, automatic);
     }
     private boolean wifi(Network n) {
@@ -162,17 +162,17 @@ public final class ConnectionManager {
         if (!session.accepts(id)) return;
         try {
             WifiManager wm = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-            if (wm == null || !wm.isWifiEnabled()) { fail("Turn Wi-Fi on and connect again."); return; }
+            if (wm == null || !wm.isWifiEnabled()) { fail("请打开 Wi-Fi 后重试。"); return; }
             NetworkRequest.Builder b = new NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                 .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
             if (automatic) {
-                if (Build.VERSION.SDK_INT < 29) { fail("Connect manually in Wi-Fi settings on this Android version."); return; }
+                if (Build.VERSION.SDK_INT < 29) { fail("此安卓版本请在系统 Wi-Fi 设置里手动连接。"); return; }
                 if (Settings.Global.getInt(context.getContentResolver(), Settings.Global.AIRPLANE_MODE_ON, 0) != 0) {
-                    fail("Turn airplane mode off and connect again."); return;
+                    fail("请关闭飞行模式后重试。"); return;
                 }
                 if (Build.VERSION.SDK_INT <= 32) {
                     LocationManager lm = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
-                    if (lm == null || !lm.isLocationEnabled()) { fail("Enable Location settings for automatic Wi-Fi connection."); return; }
+                    if (lm == null || !lm.isLocationEnabled()) { fail("自动连接 Wi-Fi 需要打开定位服务。"); return; }
                 }
                 WifiNetworkSpecifier.Builder w = new WifiNetworkSpecifier.Builder().setSsid(profile.ssid);
                 if ("WPA2".equals(profile.security)) w.setWpa2Passphrase(profile.password);
@@ -183,10 +183,10 @@ public final class ConnectionManager {
                 @Override public void onAvailable(Network n) {
                     if (!session.accepts(id) || session.isReady() || probing.contains(n)) return;
                     try { if (!ssidMatches(n, false)) return; }
-                    catch (RuntimeException e) { fail("Unable to read Wi-Fi state. Check app permissions."); return; }
+                    catch (RuntimeException e) { fail("无法读取 Wi-Fi 状态，请检查应用权限。"); return; }
                     lostNetworks.remove(n); probing.add(n); probe(id, n, 0, () -> {
                         probing.remove(n);
-                        if (automatic && session.accepts(id)) fail("Wi-Fi connected, but the device did not provide a valid response.");
+                        if (automatic && session.accepts(id)) fail("Wi-Fi 已连接，但设备没有给出有效响应。");
                     });
                 }
                 @Override public void onCapabilitiesChanged(Network n, NetworkCapabilities c) {
@@ -198,7 +198,7 @@ public final class ConnectionManager {
                 @Override public void onLost(Network n) {
                     if (!session.accepts(id)) return;
                     lostNetworks.add(n); probing.remove(n);
-                    if (n.equals(bound)) fail("Device Wi-Fi disconnected. Connect again.");
+                    if (n.equals(bound)) fail("设备 Wi-Fi 已断开，请重新连接。");
                 }
                 @Override public void onUnavailable() {
                     if (!session.accepts(id) || session.isReady()) return;
@@ -206,19 +206,19 @@ public final class ConnectionManager {
                         DeviceProfile retryProfile = profile;
                         teardown();
                         connectAttempt(retryProfile, true, true);
-                    } else fail("Connection was not approved or the device could not be reached. Tap Connect to try again.");
+                    } else fail("连接未获批准或设备不可达，请点「连接」重试。");
                 }
             };
-            status("CONNECTING", automatic ? "Waiting for Android Wi-Fi connection." : "Waiting for the device on manually connected Wi-Fi.");
+            status("CONNECTING", automatic ? "正在等待安卓连上 Wi-Fi。" : "正在等待手动连接的 Wi-Fi 上的设备。");
             if (automatic) cm.requestNetwork(b.build(), requestCallback, main, 35000);
             else cm.registerNetworkCallback(b.build(), requestCallback, main);
-        } catch (SecurityException e) { fail("Wi-Fi connection permission is missing. Check app permissions."); }
-        catch (RuntimeException e) { fail("This device could not process the connection request. Try manual mode."); }
+        } catch (SecurityException e) { fail("缺少 Wi-Fi 连接权限，请检查应用权限。"); }
+        catch (RuntimeException e) { fail("本机无法处理该连接请求，请改用手动连接。"); }
     }
     private void probe(long id, Network n, int attempt, Runnable exhausted) {
         if (!session.accepts(id) || session.isReady() || lostNetworks.contains(n)) return;
         final String home = profile.url;
-        status("VERIFYING", "Checking the device response (attempt " + (attempt + 1) + "/3).");
+        status("VERIFYING", "正在检查设备响应（第 " + (attempt + 1) + "/3).");
         try {
             NetworkCapabilities caps = cm.getNetworkCapabilities(n);
             LinkProperties lp = cm.getLinkProperties(n);
@@ -275,7 +275,7 @@ public final class ConnectionManager {
         if (!session.accepts(id) || session.isReady()) return;
         try {
             if (!wifi(network) || !cm.bindProcessToNetwork(network) || !network.equals(cm.getBoundNetworkForProcess())) {
-                fail("Unable to bind this app to the device network."); return;
+                fail("无法把应用绑定到设备所在的网络。"); return;
             }
             bound = network;
             if (!session.complete(id)) return;
@@ -289,14 +289,14 @@ public final class ConnectionManager {
                     @Override public void onLinkPropertiesChanged(Network n, LinkProperties p) {
                         if (session.accepts(id) && n.equals(bound)) links(n, p);
                     }
-                    @Override public void onLost(Network n) { if (session.accepts(id) && n.equals(bound)) fail("Device Wi-Fi disconnected."); }
+                    @Override public void onLost(Network n) { if (session.accepts(id) && n.equals(bound)) fail("设备 Wi-Fi 已断开。"); }
                 };
                 cm.registerNetworkCallback(new NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                     .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(), requestCallback, main);
             }
-            status("DASHBOARD", "Device response and app route verified. Loading dashboard.");
+            status("DASHBOARD", "设备响应与应用路由已验证，正在加载控制台。");
             listener.onReady(network, profile);
-        } catch (RuntimeException e) { fail("Device network changed. Connect again."); }
+        } catch (RuntimeException e) { fail("设备网络已变化，请重新连接。"); }
     }
     private void fail(String why) { retryPolicy.cancel(); teardown(); status("ERROR", why); }
     public void disconnect() { retryPolicy.cancel(); teardown(); if (!closed) status("IDLE", "Disconnected."); }
@@ -316,11 +316,11 @@ public final class ConnectionManager {
         if (automaticMode) {
             String permission = Build.VERSION.SDK_INT >= 33 ? "android.permission.NEARBY_WIFI_DEVICES" : "android.permission.ACCESS_FINE_LOCATION";
             if (context.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
-                fail("Wi-Fi permission changed. Check app permissions."); return;
+                fail("Wi-Fi 权限已变化，请检查应用权限。"); return;
             }
         }
-        try { if (!wifi(bound) || !bound.equals(cm.getBoundNetworkForProcess())) fail("Connection state changed. Connect again."); }
-        catch (RuntimeException e) { fail("Check connection permissions."); }
+        try { if (!wifi(bound) || !bound.equals(cm.getBoundNetworkForProcess())) fail("连接状态已变化，请重新连接。"); }
+        catch (RuntimeException e) { fail("请检查连接权限。"); }
     }
     public void close() {
         if (closed) return;

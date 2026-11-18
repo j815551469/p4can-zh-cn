@@ -63,9 +63,11 @@ public final class MainActivity extends Activity {
     private DeviceProfile pendingPermission;
     private String dashboardHome = UrlPolicy.HOME;
     private String webResult = "not loaded";
-    private Button devicesButton, menuButton;
+    private Button devicesButton, menuButton, bleButton;
+    private BleControlPanel blePanel;
     private boolean showingSettings;
     private static final int WIFI_PERMISSION = 103;
+    private static final int BLE_PERMISSION = 104;
     private WebView web;
     private FrameLayout root;
     private FrameLayout connectionScreen;
@@ -213,6 +215,12 @@ public final class MainActivity extends Activity {
         devicesButton.setOnClickListener(v -> panel.show());
         LinearLayout.LayoutParams deviceLayout = new LinearLayout.LayoutParams(-1,dp(56));
         deviceLayout.topMargin=dp(10);connectionCard.addView(devicesButton,deviceLayout);
+
+        bleButton = new Button(this);
+        prepareConnectionButton(bleButton); bleButton.setText("蓝牙控制（不连热点）");
+        bleButton.setOnClickListener(v -> openBleControl());
+        LinearLayout.LayoutParams bleLayout = new LinearLayout.LayoutParams(-1,dp(56));
+        bleLayout.topMargin=dp(10);connectionCard.addView(bleButton,bleLayout);
         page.addView(connectionCard, new LinearLayout.LayoutParams(-1, -2));
         page.addView(new Space(this), new LinearLayout.LayoutParams(dp(1), 0, 1f));
 
@@ -425,7 +433,7 @@ public final class MainActivity extends Activity {
         DeviceProfile p=profiles.selected();
         connectionLabel.setText(p.name);
         connectionFooter.setText(p.url+" · App 1.2.1");
-        connectionMessage.setText(p.ssid.isEmpty()?"Register your device Wi-Fi in Devices, or use Manual connection.":"Ready to connect to "+p.ssid+".");
+        connectionMessage.setText(p.ssid.isEmpty()?"请在「设备」里登记本车的 Wi-Fi，或使用手动连接。":"已就绪，可连接 "+p.ssid+"。");
     }
 
     private void startConnection(boolean automatic) {
@@ -439,7 +447,7 @@ public final class MainActivity extends Activity {
         if(permission!=null && checkSelfPermission(permission)!=android.content.pm.PackageManager.PERMISSION_GRANTED) {
             pendingPermission=profile;
             connectionStatus.setText("需要权限");
-            connectionMessage.setText("Allow nearby Wi-Fi access to connect. On Android 10–12, Android requires location permission for this Wi-Fi API. You can also use Manual connection.");
+            connectionMessage.setText("需要「附近的 Wi-Fi」权限才能自动连接。安卓 10–12 上该接口还要求定位权限。也可以改用手动连接。");
             requestPermissions(PermissionPolicy.requestPermissions(Build.VERSION.SDK_INT,getApplicationInfo().targetSdkVersion),WIFI_PERMISSION);return;
         }
         pendingPermission=null;
@@ -448,6 +456,11 @@ public final class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results) {
         super.onRequestPermissionsResult(request,permissions,results);
+        if(request==BLE_PERMISSION) {
+            if(BleControlClient.hasPermissions(this)) openBleControl();
+            else toast("需要蓝牙权限才能用蓝牙控制。");
+            return;
+        }
         if(request!=WIFI_PERMISSION || pendingPermission==null || destroyed) return;
         DeviceProfile requested=pendingPermission;pendingPermission=null;
         if(!requested.id.equals(profiles.selected().id)) return;
@@ -457,6 +470,16 @@ public final class MainActivity extends Activity {
             connectionStatus.setText("需要权限");
             connectionMessage.setText("未授予 Wi-Fi 权限。请在连接设置里打开应用权限，或使用「手动连接」。");
         }
+    }
+
+    private void openBleControl() {
+        if (destroyed) return;
+        if (!BleControlClient.hasPermissions(this)) {
+            requestPermissions(BleControlClient.requiredPermissions(), BLE_PERMISSION);
+            return;
+        }
+        if (blePanel == null) blePanel = new BleControlPanel(this);
+        blePanel.show();
     }
 
     private void disconnectDevice() {

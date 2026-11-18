@@ -359,7 +359,7 @@
   "BLE CSV": "BLE CSV",
   "Add S3XY Button": "添加 S3XY 按键",
   "Manage Bluetooth, automatic S3XY reconnection and the dashboard Wi-Fi connection.": "管理蓝牙、S3XY 自动重连与控制台 Wi-Fi 连接。",
-  "Bluetooth Master": "蓝牙总开关",
+  "Bluetooth Master": "S3XY 蓝牙",
   "Instant on/off · pairings saved.": "立即开关 · 配对信息保留。",
   "S3XY Auto Connect": "S3XY 自动连接",
   "Reconnects saved buttons automatically.": "自动重连已保存的按键。",

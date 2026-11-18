@@ -13,24 +13,24 @@ public final class DeviceProfile {
         return new DeviceProfile("legacy", "T2CAN", "", "OPEN", "", UrlPolicy.HOME);
     }
     public String validationError(boolean automatic) {
-        if (id == null || id.isEmpty() || id.length() > 128) return "Invalid profile ID.";
+        if (id == null || id.isEmpty() || id.length() > 128) return "配置 ID 无效。";
         if (name == null || name.trim().isEmpty() || name.length() > 80 || controls(name))
-            return "Enter a device name (1–80 characters).";
+            return "请输入设备名称（1–80 个字符）。";
         if (ssid == null || controls(ssid) || ssid.getBytes(StandardCharsets.UTF_8).length > 32
-                || (automatic && ssid.isEmpty())) return "Enter the exact Wi-Fi SSID (1–32 UTF-8 bytes).";
+                || (automatic && ssid.isEmpty())) return "请输入完整的 Wi-Fi 名称（SSID，1–32 字节 UTF-8）。";
         if (!"OPEN".equals(security) && !"WPA2".equals(security) && !"WPA3".equals(security))
-            return "Choose Open, WPA2 or WPA3 security.";
-        if (password == null) return "Enter the Wi-Fi password.";
+            return "请选择开放、WPA2 或 WPA3 加密方式。";
+        if (password == null) return "请输入 Wi-Fi 密码。";
         if ("OPEN".equals(security)) {
-            if (!password.isEmpty()) return "Open networks must not have a password.";
+            if (!password.isEmpty()) return "开放网络不能填密码。";
         } else {
             if (password.length() < 8 || password.length() > 63)
-                return "Wi-Fi passwords must contain 8–63 ASCII characters.";
+                return "Wi-Fi 密码需为 8–63 个 ASCII 字符。";
             for (int i = 0; i < password.length(); i++)
                 if (password.charAt(i) < 32 || password.charAt(i) > 126)
-                    return "Wi-Fi passwords must contain 8–63 ASCII characters.";
+                    return "Wi-Fi 密码需为 8–63 个 ASCII 字符。";
         }
-        if (!UrlPolicy.validHome(url)) return "Use HTTP at 192.168.4.1 or HTTPS at a private IPv4 address, with no path, query or fragment.";
+        if (!UrlPolicy.validHome(url)) return "地址只能是 192.168.4.1 的 HTTP，或私有 IPv4 地址的 HTTPS，且不能带路径、查询或锚点。";
         return null;
     }
     private static boolean controls(String value) {

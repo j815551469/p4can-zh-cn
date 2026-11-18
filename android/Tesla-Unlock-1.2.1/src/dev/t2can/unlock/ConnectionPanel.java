@@ -34,7 +34,7 @@ final class ConnectionPanel {
     }
     void show() {
         new AlertDialog.Builder(activity).setTitle("T2CAN 连接")
-            .setItems(new String[]{"连接", "设备", "手动连接", "Disconnect", "Copy diagnostics", "Wi-Fi settings", "App permissions"}, (d,which) -> {
+            .setItems(new String[]{"连接", "设备", "手动连接", "断开连接", "复制诊断信息", "Wi-Fi 设置", "应用权限"}, (d,which) -> {
                 switch(which) {
                     case 0: actions.connect(true); break;
                     case 1: devices(); break;
@@ -42,8 +42,8 @@ final class ConnectionPanel {
                     case 3: actions.disconnect(); break;
                     case 4:
                         ((ClipboardManager)activity.getSystemService(Activity.CLIPBOARD_SERVICE))
-                            .setPrimaryClip(ClipData.newPlainText("T2CAN diagnostics",actions.diagnostics()));
-                        toast("Diagnostics copied (no credentials)."); break;
+                            .setPrimaryClip(ClipData.newPlainText("T2CAN 诊断信息",actions.diagnostics()));
+                        toast("诊断信息已复制（不含凭据）。"); break;
                     case 5: wifi(); break;
                     case 6: activity.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                             Uri.parse("package:"+activity.getPackageName()))); break;
@@ -53,18 +53,18 @@ final class ConnectionPanel {
     void wifi() { activity.startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS)); }
     void manual() {
         new AlertDialog.Builder(activity).setTitle("手动连接")
-            .setMessage("Connect to your T2CAN in Android Wi-Fi settings, then return and tap Check connection. Other apps use the system default internet route; cellular internet is not guaranteed in this mode.")
+            .setMessage("请先在安卓系统设置里连上 T2CAN，然后回来点「检查连接」。此模式下其他应用仍走系统默认网络，蜂窝网络不保证可用。")
             .setPositiveButton("检查连接",(d,w)->actions.connect(false))
-            .setNeutralButton("Wi-Fi settings",(d,w)->wifi()).setNegativeButton("取消",null).show();
+            .setNeutralButton("Wi-Fi 设置",(d,w)->wifi()).setNegativeButton("取消",null).show();
     }
     void devices() {
         List<DeviceProfile> list=profiles.all(); String[] labels=new String[list.size()+1];
-        for(int i=0;i<list.size();i++) labels[i]=list.get(i).name+(list.get(i).id.equals(profiles.selected().id)?" (selected)":"");
-        labels[list.size()]="Add device";
+        for(int i=0;i<list.size();i++) labels[i]=list.get(i).name+(list.get(i).id.equals(profiles.selected().id)?"（当前）":"");
+        labels[list.size()]="添加设备";
         new AlertDialog.Builder(activity).setTitle("设备").setItems(labels,(d,w)->{
             if(w==list.size()) { edit(null); return; }
             DeviceProfile profile=list.get(w);
-            new AlertDialog.Builder(activity).setTitle(profile.name).setItems(new String[]{"Select", "Edit", "删除"},(dialog,choice)->{
+            new AlertDialog.Builder(activity).setTitle(profile.name).setItems(new String[]{"选择", "编辑", "删除"},(dialog,choice)->{
                 try {
                     if(choice==0) { actions.disconnect(); profiles.select(profile.id); actions.profileChanged(); }
                     else if(choice==1) edit(profile);
@@ -87,18 +87,18 @@ final class ConnectionPanel {
     void edit(DeviceProfile old) {
         LinearLayout form=new LinearLayout(activity);form.setOrientation(LinearLayout.VERTICAL);
         int pad=Math.round(20*activity.getResources().getDisplayMetrics().density);form.setPadding(pad,pad,pad,pad);
-        EditText name=field(form,"Device name",old==null?"T2CAN":old.name,false);
-        EditText ssid=field(form,"Exact Wi-Fi name (SSID)",old==null?"":old.ssid,false);
+        EditText name=field(form,"设备名称",old==null?"T2CAN":old.name,false);
+        EditText ssid=field(form,"Wi-Fi 名称（SSID，需完全一致）",old==null?"":old.ssid,false);
         TextView securityLabel=new TextView(activity);securityLabel.setText("Wi-Fi 安全");form.addView(securityLabel);
         Spinner security=new Spinner(activity);String[] types={"OPEN","WPA2","WPA3"};
         security.setAdapter(new ArrayAdapter<String>(activity,android.R.layout.simple_spinner_dropdown_item,types));
         security.setSelection(old==null?1:java.util.Arrays.asList(types).indexOf(old.security));form.addView(security);
-        EditText password=field(form,"Wi-Fi password",old==null?"":old.password,true);
+        EditText password=field(form,"Wi-Fi 密码",old==null?"":old.password,true);
         EditText url=field(form,"Dashboard address",old==null?UrlPolicy.HOME:old.url,false);
-        TextView hint=new TextView(activity);hint.setText("Use the exact settings of your device. HTTP is allowed only for 192.168.4.1; other private IPv4 addresses require HTTPS with a trusted certificate. Leave SSID blank only for manual mode.");form.addView(hint);
+        TextView hint=new TextView(activity);hint.setText("请按设备实际参数填写。仅 192.168.4.1 允许 HTTP；其他私有 IPv4 地址必须用带受信证书的 HTTPS。手动模式才可以留空 SSID。");form.addView(hint);
         TextView error=new TextView(activity);form.addView(error);
         ScrollView scroll=new ScrollView(activity);scroll.addView(form);
-        AlertDialog dialog=new AlertDialog.Builder(activity).setTitle(old==null?"Add device":"Edit device")
+        AlertDialog dialog=new AlertDialog.Builder(activity).setTitle(old==null?"添加设备":"编辑设备")
             .setView(scroll).setPositiveButton("保存",null).setNegativeButton("取消",null).create();
         dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
             String home=url.getText().toString().trim(); if(!home.endsWith("/")) home+="/";
@@ -113,5 +113,5 @@ final class ConnectionPanel {
         password.setImportantForAutofill(android.view.View.IMPORTANT_FOR_AUTOFILL_NO);
     }
     private void toast(String s) { Toast.makeText(activity,s,Toast.LENGTH_LONG).show(); }
-    private void storageError() { toast("Could not update secure profiles. Existing data was kept."); }
+    private void storageError() { toast("无法更新加密的配置，原有数据已保留。"); }
 }
