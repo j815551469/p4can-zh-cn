@@ -224,6 +224,8 @@ public final class BleControlClient {
             if (data == null || data.length < 4) return;
             int id = (data[0] & 0xFF) | ((data[1] & 0xFF) << 8);
             boolean last = (data[3] & 0x01) != 0;
+            // 每片都确认：固件没收到 ACK 会重发这一片（最多 3 次）。
+            sendText("ACK " + id);
             if (id != pendingId) { pendingId = id; pending.setLength(0); }
             pending.append(new String(data, 4, data.length - 4, StandardCharsets.UTF_8));
             if (!last) return;
