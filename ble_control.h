@@ -155,7 +155,10 @@ static String bleCtrlStatusJson() {
 }
 
 static void bleCtrlNotifyText(uint16_t id, int status, const String &body) {
-  if (!bleCtrlRunning || !bleCtrlRspChar || !bleCtrlConnected) return;
+  if (!bleCtrlRunning || !bleCtrlRspChar) return;
+  // 用协议栈的实时连接数，而不是 bleCtrlConnected 标志：
+  // 手机异常断开时该标志可能残留为 true/false，导致回包被静默丢弃。
+  if (bleCtrlServer && bleCtrlServer->getConnectedCount() == 0) return;
   String msg = String((unsigned)id) + "|" + String(status) + "|" + body;
   const size_t total = msg.length();
   // 按协商到的 MTU 分片：手机端 requestMtu(185) 后每片可发 ~180 B，

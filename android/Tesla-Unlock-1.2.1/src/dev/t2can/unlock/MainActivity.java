@@ -507,7 +507,13 @@ public final class MainActivity extends Activity {
             requestPermissions(BleControlClient.requiredPermissions(), BLE_PERMISSION);
             return;
         }
-        if (bleClient == null) {
+        // 每次进入都重建客户端：旧的 GATT 客户端可能还挂着链路，
+        // 导致对端不恢复广播、重连后收不到任何回包。
+        if (bleClient != null) {
+            bleClient.disconnect();
+            bleClient = null;
+        }
+        {
             bleClient = new BleControlClient(this, new BleControlClient.Listener() {
                 public void onState(String state, String detail) {
                     if (destroyed) return;
