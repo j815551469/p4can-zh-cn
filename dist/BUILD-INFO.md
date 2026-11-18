@@ -320,3 +320,33 @@ C5 板上都正常**。
 | 程序占用 | 1,429,426 B / 4,718,592 B（30%） |
 | 应用镜像 | 1,430,144 B · SHA256 `4f370a3d…` |
 | 刷写 | 应用区 `0x10000`，Hash verified |
+
+### 2026-11-18 修复：握持提示抑制重启后变回关闭
+
+现象：打开握持提示抑制后重启，又显示关闭。
+
+根因：`nagCfgLoad()` 遇到「blob 长度不符 / 字段校验失败」时会置 `nagNvsReadError`，
+而 `nagCfgPersistSnapshot()` 开头就是 `if (nagNvsReadError) return false;` ——
+之后所有保存都失败，界面能开、重启复位，且再也存不进去。
+
+修复：
+
+- 区分「数据损坏可覆盖」与「NVS I/O 故障」：前者新增 `nagNvsCorrupt`，**允许保存覆盖**，
+  保存成功后自动清除；后者才保持禁写。
+- `/api/nag/config` 增加 `nvsReadError` / `nvsCorrupt` / `storedEnabled` 三个诊断字段。
+
+实测（用户确认，重启后读取 `/api/nag/config`）：
+
+```
+enabled: true · storedEnabled: true · nvsReadError: false · nvsCorrupt: false
+```
+
+即开关真正持久化了。
+
+### 2026-11-18 修复：蓝牙模式误显示「首次启动」
+
+页面靠 `GET /api/profile/status` 判断是否处于设置模式，而 BLE 端点策略把
+`/api/profile/` 整个前缀拒了 → 403 → 页面回落成首次启动界面，「重试状态」同样无效。
+
+修复：放行 `GET /api/profile/status`（仍拒绝 `POST /api/profile/select`，
+即可以读档案、不能改档案）与 `GET /api/system/stats`。
