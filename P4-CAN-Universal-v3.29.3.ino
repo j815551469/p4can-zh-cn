@@ -78,12 +78,27 @@
 #include "s3xy_ble.h"
 #include "ble_control.h"
 #include "can_core.h"
+// 自动换挡（第三方源码包 third_party/autoshift，MIT）
+#include "third_party/autoshift/gear_shift_bridge.h"
+#include "third_party/autoshift/gear_hint_display_runtime.h"
+#include "third_party/autoshift/gear_shift_runtime.h"
+
 #include "can_busoff_persistence.h"
 #include "vehicle_logic.h"
 #include "continuous_ap_runtime.h"
+#include "third_party/autoshift/gear_shift_web.h"
 #include "web_api.h"
 #include "can_runtime.h"
 #include "can_usb_logger_task.h"
+
+// 自动换挡服务：10 ms 周期；默认关闭，只有显式开启配置后才会发帧。
+static void autoShiftTaskFn(void *arg) {
+  (void)arg;
+  for (;;) {
+    gearShiftServiceTick();
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
 
 void setup() {
   bootTime = millis();
@@ -270,6 +285,10 @@ void setup() {
   canInitTime = millis();
   bootCaptureMarkOnce(&bootCapCanInitDoneMs);
   if (!recoveryStartCanTasks()) restartP4CanSafely();
+
+  // 自动换挡：读取 NVS 配置并启动 10 ms 服务（默认 enabled=false）
+  gearShiftConfigLoad();
+  xTaskCreatePinnedToCore(autoShiftTaskFn, "autoshift", 4096, nullptr, 2, nullptr, tskNO_AFFINITY);
   bootCaptureMarkOnce(&bootCapCanTasksStartedMs);
 
   BaseType_t retSup = xTaskCreatePinnedToCore(canSupervisorTask, "canSup", 6144, nullptr, 3, &canSupervisorHandle, 0);

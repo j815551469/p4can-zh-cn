@@ -5725,6 +5725,10 @@ static void webTask(void *arg) {
     server.on("/api/snapshot", HTTP_GET, httpSnapshot);
     if (activeProfileNagSupported()) {
       server.on("/api/nag/config", HTTP_GET, httpNagConfig);
+      // 自动换挡（第三方包，默认关闭；enabled 只能通过这个接口显式打开）
+      server.on("/api/gear-shift/status", HTTP_GET, httpGearShiftStatus);
+      server.on("/api/gear-shift/config", HTTP_POST, httpGearShiftConfig);
+      server.on("/api/gear-shift/config", HTTP_GET, httpGearShiftStatus);
       server.on("/api/nag/stats", HTTP_GET, httpNagStats);
       server.on("/api/nag/mode", HTTP_POST, httpNagSetMode);
     server.on("/api/nag/h-variant", HTTP_POST, httpNagSetHumanVariant);

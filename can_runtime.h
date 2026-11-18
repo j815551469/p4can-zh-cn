@@ -481,6 +481,8 @@ static void canTaskNativeA(void* arg) {
       // 11-bit DATA frames. Aggregate telemetry still counts rejected frames.
       if ((rxf.can_id & 0xC0000000UL) != 0) continue;
       const uint16_t partyId = (uint16_t)(rxf.can_id & 0x7FF);
+      gearHintDisplayObserveRaw(autoShiftLogicalBus(partyId), partyId,
+                                rxf.can_dlc, false, false, rxf.data);
       continuousApObserveStock(0, partyId, rxf.data, rxf.can_dlc, countryRxEpoch, prefetchedRxMs[bi]);
       canTxMarkFresh(CAN_TX_FRESH_PARTY); // physical CAN A fresh in this recovery epoch
       bootCaptureObservePartyFrame(partyId, rxf.can_dlc, rxf.data);
@@ -626,6 +628,11 @@ static void canTaskTwai(void* arg) {
       lastCanBFrameMs = frameNow;
       canRxObserve(CAN_RX_BUS_VH, frameNow);
       // Only standard 11-bit DATA frames may reach Tesla decoders or TX paths.
+      if (!f.extd && !f.rtr && f.data_length_code <= 8 && f.identifier <= 0x7ff) {
+        gearHintDisplayObserveRaw(autoShiftLogicalBus((uint16_t)f.identifier),
+                                  (uint16_t)f.identifier, f.data_length_code,
+                                  false, false, f.data);
+      }
       if (!canUsbPassive() && !f.extd && !f.rtr && f.data_length_code <= 8 && f.identifier <= 0x7ff) {
         canTxMarkFresh(CAN_TX_FRESH_VH);
         bootCaptureObserveVhFrame(f.identifier, f.data_length_code);
