@@ -251,3 +251,18 @@ python -m esptool --chip esp32p4 -p COM3 -b 921600 write-flash `
 > 的 SHA256 与上表完全一致、逐字节相同。若清空 `build/` 全新编译，ESP32 core 里的
 > `__DATE__` / `__TIME__` 会变化，整包哈希随之改变 —— 判断固件是否同源请用
 > `tools/verify_build.py` 的内容级校验，不要只看哈希。
+
+### 2026-11-18 修复构建（默认热点名 + 热点自愈）
+
+改动（详见 `06-断连排查.md`）：
+`wifiApBuildDefaultSsid()` 改用 P4 eFuse MAC（原来是软 AP MAC，启动前为全 0，
+默认名变成 `P4-CAN-0000`）；上电到 hosted 初始化的等待 300 → 800 ms；
+`webTask()` 约 30 s 起不来热点就 `ESP.restart()` 重新握手（每次上电最多 3 次）。
+
+| 项 | 值 |
+|---|---|
+| 程序占用 | 1,392,970 B / 4,718,592 B（29%） |
+| 应用镜像 | 1,393,680 B · SHA256 `913d2edbda8d75caf07baa99c9b0a2158f5d8a94e878514ea55c6e9c0d2845da` |
+| 整片镜像 | 33,554,432 B · SHA256 `ec6f6f957388c3b5416d79b31ac77b5ad29f501c8c4495c6d8243ea90155a084` |
+| 内嵌仪表板 | 365,050 B · 9,931 汉字 · 与 `dashboard_source.html` 逐字节一致 |
+| 校验 | 两项内容级校验 + TinyCrypt 契约均 PASS |

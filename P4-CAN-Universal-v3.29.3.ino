@@ -87,7 +87,9 @@
 void setup() {
   bootTime = millis();
   Serial.begin(115200);
-  delay(300);
+  // C5（ESP-Hosted 从机）与 P4 同时上电，冷启动/热插拔 USB 时从机可能还没就绪；
+  // 300 ms 偏紧，实测会偶发 SDIO 握手失败导致没有热点。放宽到 800 ms。
+  delay(800);
   if (!p4NetworkPrepare())
     Serial.println("[P4-CAN WiFi] HOSTED_PINS_FAILED: WiFi/BLE initialization blocked");
   canUsbLoadMode();

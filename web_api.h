@@ -1,4 +1,5 @@
 #pragma once
+#include <esp_mac.h>
 #include "text_format_arduino.h"
 
 // WEB API / OTA / DASHBOARD SERVICE
@@ -1610,9 +1611,17 @@ static void httpCanBTxTraceCsv() {
 static String wifiApActiveSsid;
 static String wifiApActivePassword;
 
+// AP 启动失败的自愈计数：保存在 RTC，正常起来后清零，每次上电冷启动从 0 开始。
+RTC_DATA_ATTR static uint8_t wifiApSelfHealReboots = 0;
+
 static void wifiApBuildDefaultSsid(String &ssid) {
+  // ESP-Hosted 下 softAP 的 MAC 在 softAP() 之前读不到（返回全 0），
+  // 之前因此把默认热点名生成成 "P4-CAN-0000"。改用 P4 自己的 eFuse MAC：
+  // 上电即可读、每次启动稳定，且与射频无关。
   uint8_t mac[6] = {0};
-  WiFi.softAPmacAddress(mac);
+  if (esp_efuse_mac_get_default(mac) != ESP_OK || !(mac[0] | mac[1] | mac[2] | mac[3] | mac[4] | mac[5])) {
+    WiFi.softAPmacAddress(mac);
+  }
   char buf[24];
   snprintf(buf, sizeof(buf), "P4-CAN-%02X%02X", mac[4], mac[5]);
   ssid = buf;
@@ -5614,14 +5623,25 @@ static void httpResetRuntimeStats() {
 
 static void webTask(void *arg) {
   P4CAN_SERIAL_PRINTLN("Wi-Fi：正在启动热点…");
+  uint8_t apFailWindows = 0;
   while (!p4NetworkAllowsBle()) {
     if (p4NetworkBeginWifi()) {
       String ssid, password;
       wifiApLoadConfig(ssid, password);
       if (wifiApActivate(ssid, password, true)) break;
     }
+    // 冷启动时 ESP-Hosted / 从机射频偶发未就绪，只按固定间隔重试同一调用不会自愈
+    // （典型现象：插拔 USB 后偶尔一直没有热点）。约 30 s 仍起不来就整机重启重新
+    // 握手；每次上电最多 3 次，避免重启风暴。
+    if (++apFailWindows >= 10 && wifiApSelfHealReboots < 3) {
+      wifiApSelfHealReboots++;
+      P4CAN_SERIAL_PRINTF("Wi-Fi: AP not ready after %u attempts, rebooting (%u/3)\n",
+                          (unsigned)apFailWindows, (unsigned)wifiApSelfHealReboots);
+      ESP.restart();
+    }
     vTaskDelay(pdMS_TO_TICKS(3000));
   }
+  wifiApSelfHealReboots = 0;
 #if P4CAN_SERIAL_DIAGNOSTICS
   IPAddress ip = WiFi.softAPIP();
 #endif
