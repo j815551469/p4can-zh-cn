@@ -343,6 +343,15 @@ enabled: true · storedEnabled: true · nvsReadError: false · nvsCorrupt: false
 
 即开关真正持久化了。
 
+**根因澄清（2026-11-18 实测 NVS）**：`nag` 命名空间里的 `snapshot` 是一条 **blob**
+（当前结构体 112 字节），和其他开关用的小键不同——blob 要求长度与当前结构体**完全一致**，
+否则整份读不回来。用 esptool 直接读 NVS 发现那条记录只有 `span=5`（约 40 字节），
+是旧固件残留；于是每次启动长度不符 → 整份作废 → 回落 `enabled=false`，
+而且残留记录还占着 NVS 条目，新格式写不进去。
+
+修复：检测到长度不符或字段非法时**先 `nvs_erase_key` 删掉坏 blob** 再回落默认。
+复测：`blobActualLen=112`、`blobExpectedLen=112`、`enabled=true`、`storedEnabled=true`。
+
 ### 2026-11-18 修复：蓝牙模式误显示「首次启动」
 
 页面靠 `GET /api/profile/status` 判断是否处于设置模式，而 BLE 端点策略把
