@@ -100,22 +100,43 @@ public final class BleControlClient {
         if (scanning) return;
         scanner = adapter.getBluetoothLeScanner();
         if (scanner == null) { state("扫描不可用", "设备不支持 BLE 扫描。"); return; }
-        List<ScanFilter> filters = new ArrayList<>();
-        filters.add(new ScanFilter.Builder().setServiceUuid(new ParcelUuid(SERVICE)).build());
+        // 扫描前清掉残留连接：ESP32 在已连接状态下不广播，会表现为“扫不到”。
+        if (gatt != null) {
+            try { gatt.disconnect(); } catch (Exception ignored) { }
+            closeQuietly();
+        }
+        // 不用 ServiceFilter：ESP32 可能在广播包里只放名字，
+        // UUID 在扫描响应里，部分机型会因此扫不到。
         ScanSettings settings = new ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
         scanning = true;
-        state("正在扫描", "请确认板子上已打开「蓝牙控制通道」。");
-        scanner.startScan(filters, settings, scanCallback);
+        state("正在扫描", "请确认板子上已打开「蓝牙控制通道」、且手机没有连在别的通道上。");
+        try {
+            scanner.startScan(new ArrayList<ScanFilter>(), settings, scanCallback);
+        } catch (SecurityException error) {
+            scanning = false;
+            state("扫描失败", "缺少蓝牙扫描权限。");
+        }
         main.postDelayed(() -> { if (scanning) { stopScan(); state("未发现设备", "没扫到 P4-CAN-BLE：确认开关已开、距离近一些再重试。"); } }, 12000);
     }
 
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override public void onScanResult(int callbackType, ScanResult result) {
             BluetoothDevice device = result.getDevice();
-            String name = null;
+            String name = "";
             try { name = device.getName(); } catch (SecurityException ignored) { }
-            if (name != null && !name.isEmpty() && !TARGET_NAME.equals(name)) return;
+            boolean nameMatch = TARGET_NAME.equals(name);
+            boolean uuidMatch = false;
+            try {
+                android.bluetooth.le.ScanRecord record = result.getScanRecord();
+                List<ParcelUuid> uuids = record == null ? null : record.getServiceUuids();
+                if (uuids != null) {
+                    for (ParcelUuid uuid : uuids) {
+                        if (SERVICE.equals(uuid.getUuid())) { uuidMatch = true; break; }
+                    }
+                }
+            } catch (Exception ignored) { }
+            if (!nameMatch && !uuidMatch) return;
             stopScan();
             connect(device);
         }
@@ -350,9 +371,14 @@ public final class BleControlClient {
         stopScan();
         unregisterBondReceiver();
         main.removeCallbacks(bondTimeout);
+        final BluetoothGatt stale = gatt;
         connected = false;
         ready = false;
-        closeQuietly();
+        if (stale != null) {
+            try { stale.disconnect(); } catch (Exception ignored) { }
+        }
+        // 先 disconnect 让对端释放并恢复广播；稍后再 close，避免链路残留。
+        main.postDelayed(this::closeQuietly, 400);
         state("已断开", "连接已关闭。");
     }
 
