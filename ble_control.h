@@ -57,12 +57,26 @@ static uint32_t bleCtrlDropCount = 0;
 // 不再依赖应用层 ACK——应用层 ACK 会因为写队列和通知竞争而丢。
 static volatile uint32_t bleCtrlIndicateDone = 0;
 static volatile uint16_t bleCtrlAckId = 0;   // 保留旧字段，兼容旧 App 的 "ACK id" 写入
+// 广播看门狗：断开事件可能丢失（手机侧异常关闭），没连上就定期重开广播。
+static volatile uint32_t bleCtrlAdvRestarts = 0;
 
 static void bleCtrlSetError(const char *text) {
   snprintf(bleCtrlLastError, sizeof(bleCtrlLastError), "%s", text ? text : "");
 }
 
 static bool bleCtrlActive() { return bleCtrlRunning; }
+
+static void bleCtrlEnsureAdvertising() {
+  if (!bleCtrlRunning || !bleCtrlServer) return;
+  if (bleCtrlServer->getConnectedCount() > 0) return;
+  BLEAdvertising *adv = BLEDevice::getAdvertising();
+  if (!adv) return;
+  adv->setName(BLE_CTRL_NAME);
+  adv->addServiceUUID(BLE_CTRL_SERVICE_UUID);
+  adv->setScanResponse(true);
+  BLEDevice::startAdvertising();
+  bleCtrlAdvRestarts++;
+}
 
 // ── 端点策略：放行 /api/*，危险端点见下面的拒绝前缀 ──────────────────
 // 危险/与本机强相关的端点不予放行；其余 /api/* 都允许，整站才能走 BLE。
@@ -124,6 +138,8 @@ static String bleCtrlStatusJson() {
   j += bleCtrlConnected ? "true" : "false";
   j += ",\"commands\":";
   j += String((unsigned long)bleCtrlCmdCount);
+  j += ",\"advRestarts\":";
+  j += String((unsigned long)bleCtrlAdvRestarts);
   j += ",\"dropped\":";
   j += String((unsigned long)bleCtrlDropCount);
   j += ",\"error\":\"";
@@ -237,7 +253,11 @@ static void bleCtrlTaskFn(void *arg) {
   (void)arg;
   BleCtrlCmd cmd;
   for (;;) {
-    if (xQueueReceive(bleCtrlQueue, &cmd, portMAX_DELAY) != pdTRUE) continue;
+    if (xQueueReceive(bleCtrlQueue, &cmd, pdMS_TO_TICKS(5000)) != pdTRUE) {
+      // 没有命令时顺手检查广播（断开事件丢失的兜底）
+      bleCtrlEnsureAdvertising();
+      continue;
+    }
     int status = 0;
     String body;
     if (!bleCtrlLoopback(cmd, status, body)) {
@@ -260,7 +280,9 @@ class BleCtrlServerCallbacks : public BLEServerCallbacks {
   }
   void onDisconnect(BLEServer *) override {
     bleCtrlConnected = false;
-    if (bleCtrlRunning) BLEDevice::startAdvertising();
+    // 部分协议栈在断开瞬间还占着广播资源，延时后再开更稳。
+    vTaskDelay(pdMS_TO_TICKS(300));
+    bleCtrlEnsureAdvertising();
   }
 };
 
