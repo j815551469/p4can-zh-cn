@@ -268,3 +268,32 @@ python -m esptool --chip esp32p4 -p COM3 -b 921600 write-flash `
 | 校验 | 两项内容级校验 + TinyCrypt 契约均 PASS |
 | 刷写 | 应用区 `0x10000`（12.4 s，Hash verified），随后清 otadata；`verify-flash` 摘要一致 |
 | **实测（2026-11-18）** | 手机可搜到并连上默认热点 **`P4-CAN-3130`**（不再出现 `P4-CAN-0000`），热插拔 USB 后也能正常出热点 —— 用户确认 ✅ |
+
+### 2026-11-18 修复构建（蓝牙总开关打不开）
+
+现象：设置里打开「蓝牙总开关」，退出再进又变回关闭，且没有任何提示。
+
+根因：**上游前端作用域 bug**。`applyS3xyMaster()` 定义在一个 IIFE 里，而两个开关的
+`onchange` 在另一段脚本里直接调用裸名字 → 点击即 `ReferenceError: applyS3xyMaster is
+not defined`，请求根本没发出（`/api/s3xy/stats` 里 `enableAttemptMs` 恒为 0）。
+用无头 Edge + CDP 模拟点击复现并确认。
+
+改动：
+
+- 两处调用改为已挂到全局的 `window.__applyS3xyMaster(v)`（`s3MasterToggle` /
+  `s3xyFeatureToggle`，两个开关都受影响）；
+- 开关失败时弹出服务器原文（`蓝牙开关失败：<error>`），不再静默回弹；
+- `/api/s3xy/stats` 新增 `enableAttemptMs` / `enableResult` / `initStage` / `initError`
+  / `heapFree` / `heapLargest` / `taskRunning`，用于定位“请求没到 / NVS 写失败 /
+  建任务失败 / 协议栈初始化失败”；
+- 建 BLE 任务失败时重试一次（内存碎片兜底），错误里带堆余量。
+
+实测（用户确认）：`enableResult=1`、`initStage=8`、`bleInitialized=true`、
+`cryptoSelfTestOk=true`、`taskRunning=true` → **BLE 协议栈与 TinyCrypt 自检在这块
+C5 板上都正常**。
+
+| 项 | 值 |
+|---|---|
+| 程序占用 | 1,394,118 B / 4,718,592 B（29%） |
+| 应用镜像 | 1,394,832 B · SHA256 `179b2b15…` |
+| 整片镜像 | 33,554,432 B · SHA256 `d4b587ac…` |

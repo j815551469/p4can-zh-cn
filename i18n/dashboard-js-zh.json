@@ -193,6 +193,7 @@
   "Profile save failed: ": "档案保存失败：",
   "Your selection is kept. Retry Save Profile & Reboot.": "已保留你的选择，请重试「保存档案并重启」。",
   "Check Status": "检查状态",
+  "Bluetooth toggle failed: ": "蓝牙开关失败：",
   "Applying ": "正在应用 ",
   "Saving {e0} · {e1} and rebooting before CAN initialization…": "正在保存 {e0} · {e1}，随后在 CAN 初始化前重启…",
   "Forget {e0}?\n\nThe saved registry entry, action mappings and BLE bond will be removed.": "要忘记「{e0}」吗？\n\n已保存的注册项、动作映射与 BLE 绑定都会被删除。",

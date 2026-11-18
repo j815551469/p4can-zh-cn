@@ -1616,7 +1616,7 @@ async function startResearchCapture(slot){try{await saveResearchLabel(slot,true)
 ['A','B','C','D'].forEach(slot=>{const el=$('researchLabel'+slot);if(el)el.oninput=()=>{researchLabelDirty[slot]=true}});$('researchCapMode').onchange=saveResearchMode;$('researchCapPreWindow').onchange=()=>saveResearchWindow(false);$('researchCapPostWindow').onchange=()=>saveResearchWindow(false);$('researchCapA').onclick=()=>startResearchCapture('A');$('researchCapB').onclick=()=>startResearchCapture('B');$('researchCapC').onclick=()=>startResearchCapture('C');$('researchCapD').onclick=()=>startResearchCapture('D');$('researchCapSave').onclick=saveAllResearchLabels;$('researchCapDownload').onclick=downloadResearchCaptureCsv;$('researchCapReset').onclick=async()=>{if(!confirm('要重置所有 CAN 研究抓包分段与前置快照吗？'))return;try{await post('/api/researchcapture/reset');;fetchResearchCapture()}catch(e){}};['A','B','C','D','E','F'].forEach(slot=>{const b=$('driverMonCap'+slot);if(b)b.onclick=()=>startDriverMonitorCapture(slot)});$('driverMonDownload').onclick=()=>downloadFile('/api/drivermonitor/log.csv','Driver_Monitoring_Capture.csv','正在准备驾驶员监控 CSV');$('driverMonReset').onclick=async()=>{if(!confirm('要重置所有驾驶员监控抓包分段吗？'))return;try{await post('/api/drivermonitor/reset');;fetchDriverMonitor()}catch(e){}};$('diagBleCsv').onclick=()=>downloadFile('/api/s3xy/log.csv','P4-CAN_S3XY_MULTI.csv','正在准备 BLE CSV');$('diagSystemStatsJson').onclick=()=>downloadFile('/api/system/stats','P4-CAN_SYSTEM_STATS.json','正在准备系统统计 JSON');$('diagBleCsvSystem').onclick=()=>downloadFile('/api/s3xy/log.csv','P4-CAN_S3XY_MULTI.csv','正在准备 BLE CSV');
 $('btnResetStats').onclick=async()=>{if(!confirm('要重置运行时计数并永久删除已保存的 BUS OFF 证据吗？'))return;try{const r=await fetch('/api/system/reset-stats',{method:'POST'});let body={};try{body=await r.json()}catch(e){}if(!r.ok)throw new Error(body?.error||'BUS OFF 证据清除失败');ok();;fetchSys()}catch(e){;fetchSys()}};$('btnReinit').onclick=async()=>{if(!confirm('要对车身、底盘、智驾三路执行强制重新初始化吗？'))return;try{await post('/api/system/reinit-can');}catch(e){}};
 async function reboot(){if(!confirm('现在重启 P4-CAN 吗？'))return;showReconnectScreen('正在重启 P4-CAN','若已关闭 Wi-Fi 自动加入，请手动重连 P4-CAN 热点。\n本页面会自动恢复。');try{await post('/api/system/reboot');waitForP4CanReconnect({title:'正在重启 P4-CAN'})}catch(e){waitForP4CanReconnect({title:'正在重启 P4-CAN'})}}$('rebootRow').onclick=reboot;
-$('s3MasterToggle').onchange=async e=>{const v=e.target.checked;await applyS3xyMaster(v)};
+$('s3MasterToggle').onchange=async e=>{const v=e.target.checked;await window.__applyS3xyMaster(v)};
 $('s3AutoToggle').onchange=async e=>{try{await post(e.target.checked?'/api/s3xy/auto-enable':'/api/s3xy/auto-disable');;fetchS3()}catch(x){;fetchS3()}};$('s3ResetAll').onclick=async()=>{if(!lastS3?.bluetoothEnabled)return ;const n=(lastS3?.devices||[]).length;if(!confirm(`要重置全部蓝牙数据吗？\n\n将删除 ${n} 个已注册的 S3XY 按键、所有按键动作映射、本地 BLE 绑定、重连状态、发现缓存与 BLE 日志。\n\n蓝牙总开关与全局自动连接设置会保留。\n\nP4-CAN 将重启。`))return;try{await post('/api/s3xy/reset-all');waitForP4CanReconnect({title:'正在重置蓝牙数据',sub:'P4-CAN 正在清除 S3XY 注册表与 BLE 绑定后重启。\n若已关闭自动加入，请手动重连 Wi-Fi。'})}catch(e){}};
 
 $('s3Clear').onclick=async()=>{try{await post('/api/s3xy/clear');;fetchS3()}catch(e){}};
@@ -1892,12 +1892,11 @@ setInterval(()=>{if(universalBootReady){pollTick(false);renderHeartbeatSnapshot(
     if(s3xyMasterChangeBusy){await refreshFeatures();if(typeof fetchS3==='function')fetchS3();return}
     s3xyMasterChangeBusy=true;
     try{
-      await post('/api/features/s3xy?enabled='+(v?1:0));
+      await featurePostJson('/api/features/s3xy?enabled='+(v?1:0));
       await refreshFeatures();
       if(typeof fetchS3==='function')setTimeout(fetchS3,200);
-      
     }catch(x){
-      ;
+      alert('蓝牙开关失败：'+(x&&x.message?x.message:x));
       await refreshFeatures();
       if(typeof fetchS3==='function')fetchS3()
     }finally{s3xyMasterChangeBusy=false}
@@ -1905,7 +1904,7 @@ setInterval(()=>{if(universalBootReady){pollTick(false);renderHeartbeatSnapshot(
   window.__applyS3xyMaster=applyS3xyMaster;
   q('labMenuToggle').onchange=async e=>{const v=e.target.checked;try{const r=await post('/api/features/lab?enabled='+(v?1:0));applyFeatures(await r.json());}catch(x){e.target.checked=!v;}};
   q('doorCancelToggle').onchange=async e=>{const v=e.target.checked;try{const r=await post('/api/features/door-cancel?enabled='+(v?1:0));applyFeatures(await r.json());}catch(x){e.target.checked=!v;}};
-  q('s3xyFeatureToggle').onchange=async e=>{const v=e.target.checked;await applyS3xyMaster(v)};
+  q('s3xyFeatureToggle').onchange=async e=>{const v=e.target.checked;await window.__applyS3xyMaster(v)};
 
   q('bannedCarToggle').onchange=e=>{if(e.target.checked){e.target.checked=false;openModal('bannedWarningModal')}else{post('/api/features/banned?enabled=0').then(r=>r.json()).then(applyFeatures).catch(()=>{;refreshFeatures()})}};
   q('cancelBannedEnable').onclick=()=>{closeModal('bannedWarningModal');refreshFeatures()};q('confirmBannedEnable').onclick=async()=>{try{const r=await post('/api/features/banned?enabled=1');applyFeatures(await r.json());closeModal('bannedWarningModal')}catch(e){}};

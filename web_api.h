@@ -1810,6 +1810,8 @@ static bool httpS3xyRequireBluetooth() {
 }
 
 static void httpS3xyBluetoothEnable() {
+  s3xyEnableAttemptMs = (uint32_t)millis();
+  s3xyEnableResult = 0;
   // If an OFF transition is still draining, finish that serialized shutdown
   // before starting a fresh same-boot BLE runtime. Also repair the defensive
   // edge case where the master flag is already OFF but the mapper still exists.
@@ -1818,21 +1820,38 @@ static void httpS3xyBluetoothEnable() {
   }
   if (s3xyRuntimeStopIsPending()) {
     if (!s3xyWaitForRuntimeStopped(2500)) {
+      s3xyEnableResult = 4;
       server.send(409, "application/json", "{\"ok\":false,\"error\":\"BLE shutdown still in progress\"}");
       return;
     }
   }
 
   if (!s3xyBluetoothMasterIsEnabled() && !s3xyBluetoothMasterPersist(true)) {
-    server.send(500, "application/json", "{\"ok\":false,\"error\":\"NVS write failed\"}");
+    s3xyEnableResult = 2;
+    String err = "{\"ok\":false,\"error\":\"NVS write failed\",\"heapFree\":";
+    err += String((unsigned long)ESP.getFreeHeap());
+    err += "}";
+    server.send(500, "application/json", err);
     return;
   }
   if (!s3xyTaskHandle) {
-    const BaseType_t ret = xTaskCreatePinnedToCore(s3xyMapperTask, "s3xyMap", 8192, nullptr, 1, &s3xyTaskHandle, 0);
+    BaseType_t ret = xTaskCreatePinnedToCore(s3xyMapperTask, "s3xyMap", 8192, nullptr, 1, &s3xyTaskHandle, 0);
+    if (ret != pdPASS) {
+      // 内存碎片导致的偶发失败：给一次重试机会，再失败才回滚。
+      s3xyTaskHandle = nullptr;
+      vTaskDelay(pdMS_TO_TICKS(150));
+      ret = xTaskCreatePinnedToCore(s3xyMapperTask, "s3xyMap", 8192, nullptr, 1, &s3xyTaskHandle, 0);
+    }
     if (ret != pdPASS) {
       s3xyTaskHandle = nullptr;
       s3xyBluetoothMasterPersist(false);
-      server.send(500, "application/json", "{\"ok\":false,\"error\":\"BLE task start failed\"}");
+      s3xyEnableResult = 3;
+      String err = "{\"ok\":false,\"error\":\"BLE task start failed\",\"heapFree\":";
+      err += String((unsigned long)ESP.getFreeHeap());
+      err += ",\"heapLargest\":";
+      err += String((unsigned long)ESP.getMaxAllocHeap());
+      err += "}";
+      server.send(500, "application/json", err);
       return;
     }
   }
@@ -1840,6 +1859,7 @@ static void httpS3xyBluetoothEnable() {
   // Re-arm the exact boot-time reconnect scheduler instead of creating a
   // second runtime reconnect implementation.
   s3xyRuntimeRearmAutoReconnect();
+  s3xyEnableResult = 1;
   server.send(200, "application/json", "{\"ok\":true,\"bluetoothEnabled\":true,\"rebooting\":false}");
 }
 

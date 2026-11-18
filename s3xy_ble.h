@@ -284,6 +284,19 @@ static volatile bool s3xyBluetoothEnabled = false;
 static S3xyCommandRequest s3xyCommand = {};
 static TaskHandle_t s3xyTaskHandle = nullptr;
 static volatile bool s3xyBleInitialized = false;
+// 诊断：最近一次「蓝牙总开关开启」的结果与协议栈初始化阶段（RAM，重启清零）。
+// 面板上的开关一直弹回，就靠这几个字段定位是 NVS、任务创建还是协议栈初始化。
+static volatile uint32_t s3xyEnableAttemptMs = 0;
+static volatile uint8_t s3xyEnableResult = 0;   // 0 未尝试 · 1 成功 · 2 NVS 写失败 · 3 任务创建失败 · 4 关闭未收敛
+static volatile uint8_t s3xyInitStage = 0;      // 1 入口 · 2 AP 门控 · 3 加密阻断 · 4 host 初始化 · 5 安全观察者 · 6 自检 · 7 扫描对象 · 8 完成
+static char s3xyInitError[48] = "";
+
+static void s3xyInitMark(uint8_t stage, const char *err) {
+  portENTER_CRITICAL(&s3xyMux);
+  s3xyInitStage = stage;
+  snprintf(s3xyInitError, sizeof(s3xyInitError), "%s", err ? err : "");
+  portEXIT_CRITICAL(&s3xyMux);
+}
 static volatile bool s3xyRuntimeStopRequested = false;
 static volatile bool s3xyRuntimeStopping = false;
 static volatile uint32_t s3xyLastBleOperationMs = 0;
@@ -1531,14 +1544,27 @@ static S3xyAdvertisedCallbacks s3xyAdvertisedCallbacks;
 
 static bool s3xyMapperInit() {
   if (!s3xyBluetoothMasterIsEnabled()) return false;
+  s3xyInitMark(1, "");
   // The C6 is shared: never initialize BLE while WiFi brings up Hosted.
-  if (!p4NetworkAllowsBle()) return false;
+  if (!p4NetworkAllowsBle()) {
+    s3xyInitMark(2, "AP not started (bleStartupAllowed=false)");
+    return false;
+  }
   // A failed known-answer calculation blocks pairing for this boot.
   portENTER_CRITICAL(&s3xyMux);
   const bool cryptoBlocked = s3xyCryptoChecked && !s3xyCryptoReady;
   portEXIT_CRITICAL(&s3xyMux);
-  if (cryptoBlocked) return false;
-  if (!BLEDevice::init("P4-CAN_S3XY_MULTI") || !p4BleSecurityInit()) {
+  if (cryptoBlocked) {
+    s3xyInitMark(3, "crypto self-test blocked this boot");
+    return false;
+  }
+  if (!BLEDevice::init("P4-CAN_S3XY_MULTI")) {
+    s3xyInitMark(4, "BLEDevice::init failed");
+    s3xyLogPush(S3XY_LOG_ERROR, "BLE host/security observer initialization failed");
+    return false;
+  }
+  if (!p4BleSecurityInit()) {
+    s3xyInitMark(5, "security observer init failed");
     s3xyLogPush(S3XY_LOG_ERROR, "BLE host/security observer initialization failed");
     return false;
   }
@@ -1557,6 +1583,7 @@ static bool s3xyMapperInit() {
       s3xyLogPush(S3XY_LOG_ERROR, "P4 BLE DHKey self-test failed; pairing blocked");
       // No clients or scans exist yet. Unregister before stopping the host;
       // the caller keeps s3xyBleInitialized false on this failure path.
+      s3xyInitMark(6, "crypto self-test failed; pairing blocked");
       p4BleSecurityShutdown();
       BLEDevice::deinit(false);
       return false;
@@ -1590,6 +1617,7 @@ static bool s3xyMapperInit() {
 
   BLEScan *scan = BLEDevice::getScan();
   if (!scan) {
+    s3xyInitMark(7, "BLE scan object unavailable");
     s3xyLogPush(S3XY_LOG_ERROR, "BLE scan object unavailable");
     return false;
   }
@@ -1603,6 +1631,7 @@ static bool s3xyMapperInit() {
   portENTER_CRITICAL(&s3xyMux);
   s3xyBleInitialized = true;
   portEXIT_CRITICAL(&s3xyMux);
+  s3xyInitMark(8, "");
   const int bootBonds = s3xyLocalBondCount();
   const uint8_t registryCount = s3xyRegisteredCount();
   portENTER_CRITICAL(&s3xyMux);
@@ -3333,6 +3362,24 @@ static String s3xyStatsToJson() {
   jw.boolean("cryptoSelfTestOk", cryptoReady);
   jw.boolean("autoEnabled", autoEnabled);
   jw.boolean("diagnosticsEnabled", S3XY_DIAGNOSTICS_ENABLED != 0);
+  {
+    uint32_t enableAttemptMs;
+    uint8_t enableResult, initStage;
+    char initErr[48];
+    portENTER_CRITICAL(&s3xyMux);
+    enableAttemptMs = s3xyEnableAttemptMs;
+    enableResult = s3xyEnableResult;
+    initStage = s3xyInitStage;
+    snprintf(initErr, sizeof(initErr), "%s", s3xyInitError);
+    portEXIT_CRITICAL(&s3xyMux);
+    jw.u32("enableAttemptMs", enableAttemptMs);
+    jw.i32("enableResult", (int32_t)enableResult);
+    jw.i32("initStage", (int32_t)initStage);
+    jw.string("initError", s3xyJsonEscape(initErr));
+    jw.u32("heapFree", (uint32_t)ESP.getFreeHeap());
+    jw.u32("heapLargest", (uint32_t)ESP.getMaxAllocHeap());
+    jw.boolean("taskRunning", s3xyTaskHandle != nullptr);
+  }
   char probeError[64];
   P4BleSecurityResult probeSecurity;
   portENTER_CRITICAL(&s3xyMux);
