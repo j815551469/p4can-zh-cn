@@ -390,3 +390,25 @@ last: { id: 21, status: 0, body: "loopback failed" }
 - 仪表板启动逐步容错，`loadNag()` 总是执行（修「握持提示抑制」显示关闭）。
 
 实测结论：修复后蓝牙模式首次连接与断开重连均正常。
+
+### 2026-11-18 新增：自动换挡（Auto Shift，第三方包，默认关闭）
+
+来源 `kl79613/P4Can-automatic-shifting`（MIT，从上游固件提取），已并入
+`third_party/autoshift/`（便携核心 + 主机测试 + 接入参考），文档见 `08-自动换挡.md`。
+
+接线：
+
+- `can_runtime.h` 的 CAN A / VH 两条接收路径调用 `gearHintDisplayObserveRaw()`；
+- `.ino` 启动时 `gearShiftConfigLoad()`，并起 `autoshift` 任务（10 ms 调 `gearShiftServiceTick()`）；
+- `web_api.h` 注册 `GET /api/gear-shift/status`、`POST /api/gear-shift/config`；
+- 逻辑总线按帧 ID 归类（0x229/0x678→0，0x255/0x12B→2，其余→1）。
+
+前端：实验室页新增「自动换挡」卡片（状态只读 + 开关二次确认 + 逆向/车型警告）。
+
+主机回归：`PASS 82 / 405 / 179`（编码互锁、V12 距离规则、V13/V14 配对）。
+
+产物：固件 1,456,502 B（程序体，镜像 1,456,512 B），
+内嵌中文仪表板 10,213 汉字；APK 283,705 B，`ble-dashboard.html` 370,612 B。
+
+风险：`protocolVerified` / `vehicleBehaviorVerified` 恒为 `false`；
+仅 2021 款 Model Y 有实车验证，Juniper / YL / Model 3 未适配。
