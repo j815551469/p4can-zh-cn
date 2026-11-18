@@ -512,7 +512,17 @@ public final class MainActivity extends Activity {
                     if (destroyed) return;
                     connectionStatus.setText(state);
                     connectionMessage.setText(detail);
-                    if (bleClient != null && bleClient.isConnected() && !blePageLoaded) loadBlePage();
+                    if (bleClient == null) return;
+                    if (!bleClient.isConnected()) {
+                        // 断开后把页面拆掉，重连时重新加载，避免停在旧页面或
+                        // 已经回落到“首次启动”遮罩上。
+                        if (blePageLoaded) {
+                            destroyDashboard();
+                            blePageLoaded = false;
+                        }
+                        return;
+                    }
+                    if (!blePageLoaded) loadBlePage();
                 }
                 public void onResult(int id, int status, String body) {
                     if (destroyed || web == null || !bleMode) return;
