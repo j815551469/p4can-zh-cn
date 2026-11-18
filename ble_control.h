@@ -89,6 +89,10 @@ static bool bleCtrlPathAllowed(const char *method, const char *pathWithQuery) {
     if (strcmp(path, "/api/s3xy/stats") == 0) return true;
     if (strcmp(path, "/api/ble/status") == 0) return true;
     if (strcmp(path, "/api/wifi/status") == 0) return true;
+    // 页面启动就靠它判断是否处于车型档案设置模式；读不到会误显示“首次启动”。
+    if (strcmp(path, "/api/profile/status") == 0) return true;
+    // 诊断页的只读数据（几 KB）。
+    if (strcmp(path, "/api/system/stats") == 0) return true;
   }
   for (const char *deny : BLE_CTRL_DENY_PREFIX) {
     const size_t len = strlen(deny);

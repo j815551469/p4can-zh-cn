@@ -523,6 +523,10 @@ public final class MainActivity extends Activity {
         }
         bleMode = true;
         blePageLoaded = false;
+        // 清掉上一次 Wi-Fi 会话可能残留的文件选择/导出状态，否则返回时会误报
+        // “请等待文件传输完成后再返回”。
+        finishFileChoice(null);
+        closeExporter();
         destroyDashboard();
         connectionStatus.setText("正在连接蓝牙");
         connectionMessage.setText("正在扫描 P4-CAN-BLE…");

@@ -1234,6 +1234,10 @@ struct NagStoredSnapshot {
   NagScrollStoredSnapshot scroll;
 };
 static bool nagNvsReadError = false;
+// 旧固件格式/字段越界：数据不可用但允许覆盖，不能像 I/O 错误那样锁死保存。
+static bool nagNvsCorrupt = false;
+// 加载时从 NVS 原样读到的 enabled（策略归一化之前），用于诊断“重启变关”。
+static bool nagStoredEnabled = false;
 
 static void nagCfgLoadSafeDefaults() {
   nagCfgDefaultsModeH(nagCfg);
@@ -1260,7 +1264,9 @@ static bool nagCfgPersistSnapshot(const NagConfig& config,
   stored.scroll = scroll;
   stored.variant = nagModeHVariantValidPure(variant)
       ? variant : nagModeHDefaultVariantPure();
-  return nvsCheckedWriteBlob("nag", "snapshot", &stored, sizeof(stored));
+  const bool ok = nvsCheckedWriteBlob("nag", "snapshot", &stored, sizeof(stored));
+  if (ok) nagNvsCorrupt = false;
+  return ok;
 }
 
 static bool nagCfgPersist(const NagConfig& config,
@@ -1285,9 +1291,23 @@ static bool nagCfgSaveCandidate(const NagConfig& config) {
 
 static void nagCfgLoad() {
   nagNvsReadError = false;
+  nagNvsCorrupt = false;
+  nagStoredEnabled = false;
   NagStoredSnapshot stored = {};
   bool found = false;
   if (!nvsCheckedReadBlob("nag", "snapshot", &stored, sizeof(stored), found)) {
+    // 先看是不是「旧格式长度不符」：这种情况应允许用户覆盖，而不是永久禁写。
+    size_t actual = 0;
+    CheckedPreferences probe;
+    if (probe.begin("nag", true)) {
+      actual = probe.getBytesLength("snapshot");
+      probe.end();
+    }
+    if (actual != 0 && actual != sizeof(stored)) {
+      nagNvsCorrupt = true;
+      nagCfgLoadSafeDefaults();
+      return;
+    }
     nagNvsReadError = true;
     nagCfgLoadSafeDefaults();
     return;
@@ -1295,10 +1315,11 @@ static void nagCfgLoad() {
   if (found) {
     if (stored.version != 1u || !nagModePersistedIdSupported(stored.config.mode) ||
         !modeHConfigValidPure(stored.human)) {
-      nagNvsReadError = true;
+      nagNvsCorrupt = true;
       nagCfgLoadSafeDefaults();
       return;
     }
+    nagStoredEnabled = stored.config.enabled;
     nagScrollRuntimeRestore(stored.scroll);
     nagCfg = stored.config;
     nagCfgClampAll(nagCfg);

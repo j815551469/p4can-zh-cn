@@ -121,6 +121,10 @@ static String nagCfgToJson() {
     tw.finish();
   }
   jw.endArray();
+  // 诊断：为什么重启后 enabled 变回 false —— 是读坏了、被策略归一化，还是写法失败。
+  jw.boolean("nvsReadError", nagNvsReadError);
+  jw.boolean("nvsCorrupt", nagNvsCorrupt);
+  jw.boolean("storedEnabled", nagStoredEnabled);
   jw.finish();
   return s;
 }
