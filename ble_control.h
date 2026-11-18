@@ -351,6 +351,9 @@ static bool bleCtrlStart() {
   svc->start();
 
   BLEAdvertising *adv = BLEDevice::getAdvertising();
+  // 与 S3XY 共用同一个 BLE host：谁先 init 谁定 GAP 名字（S3XY 那边叫
+  // P4-CAN_S3XY_MULTI）。这里强制把广播名改成控制通道的名字，避免手机扫到两台。
+  adv->setName(BLE_CTRL_NAME);
   adv->addServiceUUID(BLE_CTRL_SERVICE_UUID);
   adv->setScanResponse(true);
   BLEDevice::startAdvertising();

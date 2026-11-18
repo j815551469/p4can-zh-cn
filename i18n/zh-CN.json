@@ -887,5 +887,6 @@
   "Mode 1 MUX1 transmit wait": "模式 1 MUX1 发送等待",
   "Firmware .bin file": "固件 .bin 文件",
   "Dashboard": "控制台",
-  "Leave blank to keep current password": "留空表示保持当前密码"
+  "Leave blank to keep current password": "留空表示保持当前密码",
+  "BLE control": "蓝牙控制通道"
 }
