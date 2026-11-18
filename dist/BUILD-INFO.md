@@ -266,3 +266,5 @@ python -m esptool --chip esp32p4 -p COM3 -b 921600 write-flash `
 | 整片镜像 | 33,554,432 B · SHA256 `ec6f6f957388c3b5416d79b31ac77b5ad29f501c8c4495c6d8243ea90155a084` |
 | 内嵌仪表板 | 365,050 B · 9,931 汉字 · 与 `dashboard_source.html` 逐字节一致 |
 | 校验 | 两项内容级校验 + TinyCrypt 契约均 PASS |
+| 刷写 | 应用区 `0x10000`（12.4 s，Hash verified），随后清 otadata；`verify-flash` 摘要一致 |
+| **实测（2026-11-18）** | 手机可搜到并连上默认热点 **`P4-CAN-3130`**（不再出现 `P4-CAN-0000`），热插拔 USB 后也能正常出热点 —— 用户确认 ✅ |
