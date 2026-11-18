@@ -332,7 +332,8 @@ public final class MainActivity extends Activity {
         WebSettings settings = web.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setAllowFileAccess(false);
+        // 蓝牙模式加载的是缓存目录里的本地页面（只有本应用写的文件），需要放开 file 访问。
+        settings.setAllowFileAccess(bleMode);
         settings.setAllowContentAccess(true); // User-selected OTA content URI only.
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
@@ -342,7 +343,7 @@ public final class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String target = request.getUrl().toString();
-                if (bleMode && target.startsWith("file:///android_asset/")) return false;
+                if (bleMode && target.startsWith("file://")) return false;
                 return !UrlPolicy.isDevice(target, dashboardHome);
             }
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
@@ -357,7 +358,7 @@ public final class MainActivity extends Activity {
                                 new ByteArrayInputStream(html.getBytes(StandardCharsets.UTF_8)));
                     } catch (Exception ignored) { }
                 }
-                if (bleMode && target.startsWith("file:///android_asset/")) return null;
+                if (bleMode && target.startsWith("file://")) return null;
                 if (UrlPolicy.isDevice(target, dashboardHome)) return null;
                 return new WebResourceResponse("text/plain", "UTF-8", 403, "Blocked",
                         java.util.Collections.emptyMap(), new ByteArrayInputStream(new byte[0]));
@@ -555,7 +556,32 @@ public final class MainActivity extends Activity {
         updateTheme();
         webResult = "ble dashboard";
         loadStarted = true;
-        web.loadUrl(BLE_PAGE);
+        web.loadUrl(buildBlePageFile());
+    }
+
+    /** 把内置仪表板与注入脚本合成一个缓存文件：不依赖 shouldInterceptRequest。 */
+    private String buildBlePageFile() {
+        try {
+            String html = readAsset("ble-dashboard.html");
+            String shim = readAsset("ble-shim.js");
+            String hide = readAsset("ble-hide.css");
+            String inject = "<script>" + shim + "</script><style>" + hide + "</style>";
+            int head = html.indexOf("<head>");
+            if (head >= 0) {
+                html = html.substring(0, head + 6) + inject + html.substring(head + 6);
+            } else {
+                html = inject + html;
+            }
+            java.io.File dir = new java.io.File(getCacheDir(), "bledash");
+            if (!dir.exists()) dir.mkdirs();
+            java.io.File file = new java.io.File(dir, "dashboard.html");
+            java.io.FileOutputStream out = new java.io.FileOutputStream(file, false);
+            out.write(html.getBytes(StandardCharsets.UTF_8));
+            out.close();
+            return android.net.Uri.fromFile(file).toString();
+        } catch (Exception error) {
+            return BLE_PAGE;
+        }
     }
 
     /** 页面通过 window.TuBle 下发命令；回包由 onResult 调 __tuBleResult 送回。 */
